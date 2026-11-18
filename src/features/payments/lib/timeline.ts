@@ -18,9 +18,9 @@ function shift(iso: string, ms: number): string {
 }
 
 /**
- * Derives the payment's event history from its recorded facts (newest
- * first). Small fixed offsets separate events that happen within the same
- * request (e.g. created → authorized → succeeded).
+ * The payment's events, newest first, worked out from its fields. Events from
+ * the same request (created, authorized, succeeded) get a few seconds between
+ * them.
  */
 export function buildPaymentTimeline(transaction: Transaction): readonly TimelineEvent[] {
   const amount = formatAmount(transaction.amountMinor, transaction.currency);
@@ -43,6 +43,26 @@ export function buildPaymentTimeline(transaction: Transaction): readonly Timelin
         description: transaction.declineReason
           ? `${method} was declined: ${DECLINE_REASON_LABELS[transaction.declineReason]}`
           : `${method} was declined`,
+        at: shift(transaction.createdAt, 2_000),
+        tone: 'danger',
+      });
+      break;
+
+    case 'canceled':
+      events.push({
+        id: 'canceled',
+        title: 'Payment canceled',
+        description: `The authorization on ${method} was released before capture`,
+        at: shift(transaction.createdAt, 2_000),
+        tone: 'neutral',
+      });
+      break;
+
+    case 'blocked':
+      events.push({
+        id: 'blocked',
+        title: 'Payment blocked',
+        description: 'Blocked by a fraud rule because the risk level was too high',
         at: shift(transaction.createdAt, 2_000),
         tone: 'danger',
       });

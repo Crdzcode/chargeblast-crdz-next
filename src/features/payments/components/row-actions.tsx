@@ -13,8 +13,8 @@ import {
 import { copyText } from '@/lib/clipboard';
 
 import type { Transaction } from '../model/transaction';
+import { paymentHref } from '../routes';
 
-/** The trailing "…" menu of a row. */
 export function RowActions({ transaction }: { transaction: Transaction }) {
   return (
     <DropdownMenu modal={false}>
@@ -26,7 +26,7 @@ export function RowActions({ transaction }: { transaction: Transaction }) {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" onClick={(event) => event.stopPropagation()}>
         <DropdownMenuItem asChild>
-          <Link href={`/transactions/payments/${transaction.id}`}>
+          <Link href={paymentHref(transaction.id)}>
             <ExternalLink className="size-4 text-fg-muted" aria-hidden />
             View payment details
           </Link>

@@ -6,9 +6,8 @@ import { PaymentsDataProvider } from '@/features/payments/data/payments-data-pro
 import { getReferenceTime } from '@/features/payments/data/reference-time';
 
 /**
- * Dashboard shell. The reference instant is read once per request on the
- * server (never frozen at build time) and shared with every client
- * component of the shell.
+ * Reads the clock once per request and passes it down, so every client
+ * component builds the same data.
  */
 export default async function DashboardLayout({ children }: { readonly children: ReactNode }) {
   const referenceNow = await getReferenceTime();
@@ -19,7 +18,7 @@ export default async function DashboardLayout({ children }: { readonly children:
         <Sidebar />
         <div className="flex min-w-0 flex-1 flex-col">
           <Topbar />
-          <main id="main" className="min-w-0 flex-1 px-4 pt-3 pb-10 md:px-10">
+          <main id="main" className="min-w-0 flex-1 px-4 pt-[19px] pb-10 md:px-10">
             {children}
           </main>
         </div>

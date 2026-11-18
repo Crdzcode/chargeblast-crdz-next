@@ -1,7 +1,6 @@
 'use client';
 
 import {
-  ArrowLeftRight,
   ChartColumn,
   ChevronDown,
   Clock3,
@@ -9,18 +8,17 @@ import {
   House,
   Layers,
   Package,
-  Radar,
   ReceiptText,
-  Rocket,
-  Scale,
+  Repeat,
   SquareTerminal,
   User,
   Wallet,
-  type LucideIcon,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import type { ComponentType, SVGProps } from 'react';
 
+import { BalancesIcon, PushPinIcon } from '@/components/icons/dashboard-icons';
 import { Unavailable } from '@/components/ui/unavailable';
 import { cn } from '@/lib/cn';
 
@@ -28,25 +26,26 @@ import { AccountMenu } from './account-menu';
 
 interface NavItem {
   readonly label: string;
-  readonly icon: LucideIcon;
-  /** Only implemented sections have a route; the rest explain they are out of scope. */
+  readonly icon: ComponentType<SVGProps<SVGSVGElement>>;
+  /** Only Transactions has a route. The other entries say "Not available in this demo". */
   readonly href?: '/transactions/payments';
   readonly expandable?: boolean;
 }
 
 const PRIMARY: readonly NavItem[] = [
   { label: 'Home', icon: House },
-  { label: 'Balances', icon: Scale },
-  { label: 'Transactions', icon: ArrowLeftRight, href: '/transactions/payments' },
+  { label: 'Balances', icon: BalancesIcon },
+  { label: 'Transactions', icon: Repeat, href: '/transactions/payments' },
   { label: 'Customers', icon: User },
   { label: 'Product catalog', icon: Package },
 ];
 
 const SHORTCUTS: readonly NavItem[] = [
-  { label: 'Payments analytics', icon: Rocket },
+  { label: 'Payments analytics', icon: PushPinIcon },
   { label: 'Reports', icon: Clock3 },
   { label: 'Sigma', icon: Clock3 },
-  { label: 'Radar', icon: Radar },
+  // Stripe uses the same clock icon for every recent shortcut.
+  { label: 'Radar', icon: Clock3 },
 ];
 
 const PRODUCTS: readonly NavItem[] = [
@@ -102,14 +101,14 @@ function NavSection({
   return (
     <div className="flex flex-col gap-0.5">
       {title ? (
-        <p className="px-2 pb-1 text-[13px] font-medium text-fg-secondary">{title}</p>
+        <p className="px-[3px] text-[13px] leading-5 font-medium text-fg-secondary">{title}</p>
       ) : null}
       <ul className="flex flex-col gap-0.5">
         {items.map((item) => (
           <li key={item.label}>
             <NavEntry
               item={item}
-              active={Boolean(item.href && pathname.startsWith('/transactions'))}
+              active={item.href !== undefined && pathname.startsWith(item.href)}
             />
           </li>
         ))}
@@ -118,14 +117,13 @@ function NavSection({
   );
 }
 
-/** Left navigation of the reference: account switcher, sections and Developers. */
 export function SidebarContent() {
   const pathname = usePathname();
 
   return (
-    <div className="flex h-full flex-col px-3 pt-3 pb-3">
+    <div className="flex h-full flex-col px-3 pt-2 pb-3">
       <AccountMenu />
-      <nav aria-label="Main" className="mt-5 flex flex-1 flex-col gap-6 overflow-y-auto">
+      <nav aria-label="Main" className="mt-8 flex flex-1 flex-col gap-[31px] overflow-y-auto">
         <NavSection items={PRIMARY} pathname={pathname} />
         <NavSection title="Shortcuts" items={SHORTCUTS} pathname={pathname} />
         <NavSection title="Products" items={PRODUCTS} pathname={pathname} />

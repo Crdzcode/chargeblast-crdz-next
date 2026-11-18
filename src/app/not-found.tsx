@@ -1,6 +1,7 @@
 import Link from 'next/link';
 
 import { Button } from '@/components/ui/button';
+import { PAYMENTS_PATH } from '@/features/payments/routes';
 
 export default function NotFound() {
   return (
@@ -11,7 +12,7 @@ export default function NotFound() {
         This demo only includes the Payments area of the dashboard.
       </p>
       <Button asChild variant="primary" className="mt-2">
-        <Link href="/transactions/payments">Go to Payments</Link>
+        <Link href={PAYMENTS_PATH}>Go to Payments</Link>
       </Button>
     </main>
   );

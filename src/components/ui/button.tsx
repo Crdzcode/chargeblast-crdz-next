@@ -4,7 +4,7 @@ import type { ButtonHTMLAttributes } from 'react';
 import { cn } from '@/lib/cn';
 
 type ButtonVariant = 'primary' | 'secondary' | 'ghost';
-type ButtonSize = 'sm' | 'md' | 'icon';
+type ButtonSize = 'xs' | 'sm' | 'md' | 'icon';
 
 const VARIANTS: Record<ButtonVariant, string> = {
   primary:
@@ -16,6 +16,7 @@ const VARIANTS: Record<ButtonVariant, string> = {
 };
 
 const SIZES: Record<ButtonSize, string> = {
+  xs: 'h-6 gap-1 rounded-control px-2 text-[13px] leading-4',
   sm: 'h-7 gap-1.5 rounded-control px-2 text-[14px] leading-5',
   md: 'h-8 gap-1.5 rounded-control px-3 text-[14px] leading-5',
   icon: 'size-7 rounded-control',
@@ -24,7 +25,7 @@ const SIZES: Record<ButtonSize, string> = {
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   readonly variant?: ButtonVariant;
   readonly size?: ButtonSize;
-  /** Renders the single child element with button styles (e.g. a Link). */
+  /** Passes the button styles to its only child, e.g. a Link. */
   readonly asChild?: boolean;
 }
 

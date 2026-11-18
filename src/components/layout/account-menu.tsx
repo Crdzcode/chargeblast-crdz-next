@@ -21,19 +21,34 @@ export const ACCOUNT = {
 
 function AccountLogo({ size = 22 }: { size?: number }) {
   return (
-    <span
+    // Placeholder logo: a lavender tile with a handwritten wordmark.
+    <svg
+      viewBox="0 0 22 22"
+      width={size}
+      height={size}
       aria-hidden
-      className="inline-flex shrink-0 items-center justify-center rounded-[5px] bg-[#d9d4ff] text-[10px] font-bold text-primary-text"
-      style={{ width: size, height: size }}
+      focusable="false"
+      className="shrink-0"
     >
-      c
-    </span>
+      <rect width="22" height="22" rx="5" className="fill-account-logo" />
+      <text
+        x="11"
+        y="12.6"
+        textAnchor="middle"
+        fontFamily="'Segoe Script', 'Brush Script MT', 'Snell Roundhand', cursive"
+        fontSize="5.2"
+        fontStyle="italic"
+        className="fill-fg"
+      >
+        Cramly
+      </text>
+    </svg>
   );
 }
 
 /**
- * Account switcher from the reference sidebar header. Account-level actions
- * are out of scope and say so; copying the account id works.
+ * Account switcher at the top of the sidebar. Copying the account ID works; the
+ * other actions are out of scope.
  */
 export function AccountMenu() {
   const [copied, setCopied] = useState(false);

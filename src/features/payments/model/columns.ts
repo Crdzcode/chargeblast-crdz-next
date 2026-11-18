@@ -12,9 +12,8 @@ export type ColumnId =
   | 'declineReason';
 
 /**
- * One data column. Header, cell, order, visibility, width, Edit columns and
- * CSV all read from this model. The selection checkbox and the row actions
- * menu are fixed and live outside it.
+ * One data column. The header, cell, order, visibility, width, Edit columns and
+ * the CSV all read from it. The checkbox and the row menu aren't columns.
  */
 export interface ColumnConfig {
   readonly id: ColumnId;
@@ -24,19 +23,25 @@ export interface ColumnConfig {
   readonly width: number;
   readonly minWidth: number;
   readonly maxWidth: number;
-  /** The six columns required by the challenge cannot be hidden. */
+  /** Columns the brief asks for. They can be moved but not hidden. */
   readonly required: boolean;
   readonly sortField: SortField | null;
   readonly align: 'left' | 'right';
+  /**
+   * No visible header text, like Stripe's status column. The label is still
+   * there for screen readers and shows on hover, on focus or while the column
+   * is sorted.
+   */
+  readonly quietHeader: boolean;
 }
 
 type ColumnDefinition = Omit<ColumnConfig, 'order'>;
 
 /**
- * Default order follows the reference screenshot (Amount, status badge,
- * Payment method, Description, Customer, Date, Refunded date, Decline
- * reason) with the required Payment ID column placed before Date so it is
- * visible without horizontal scrolling on a 1440px screen.
+ * Order and widths follow the Stripe screenshot: Amount, status, Payment
+ * method, Description, Customer, Date, Refunded date, Decline reason. Payment
+ * ID isn't on that screen, so it goes last and the table scrolls sideways to
+ * reach it.
  */
 const DEFINITIONS: readonly ColumnDefinition[] = [
   {
@@ -49,6 +54,7 @@ const DEFINITIONS: readonly ColumnDefinition[] = [
     required: true,
     sortField: 'amount',
     align: 'right',
+    quietHeader: false,
   },
   {
     id: 'status',
@@ -60,6 +66,7 @@ const DEFINITIONS: readonly ColumnDefinition[] = [
     required: true,
     sortField: 'status',
     align: 'left',
+    quietHeader: true,
   },
   {
     id: 'paymentMethod',
@@ -71,6 +78,7 @@ const DEFINITIONS: readonly ColumnDefinition[] = [
     required: true,
     sortField: null,
     align: 'left',
+    quietHeader: false,
   },
   {
     id: 'description',
@@ -82,6 +90,7 @@ const DEFINITIONS: readonly ColumnDefinition[] = [
     required: false,
     sortField: null,
     align: 'left',
+    quietHeader: false,
   },
   {
     id: 'customer',
@@ -93,17 +102,7 @@ const DEFINITIONS: readonly ColumnDefinition[] = [
     required: true,
     sortField: null,
     align: 'left',
-  },
-  {
-    id: 'paymentId',
-    label: 'Payment ID',
-    visible: true,
-    width: 150,
-    minWidth: 140,
-    maxWidth: 320,
-    required: true,
-    sortField: null,
-    align: 'left',
+    quietHeader: false,
   },
   {
     id: 'created',
@@ -115,6 +114,7 @@ const DEFINITIONS: readonly ColumnDefinition[] = [
     required: true,
     sortField: 'createdAt',
     align: 'left',
+    quietHeader: false,
   },
   {
     id: 'refundedDate',
@@ -126,6 +126,7 @@ const DEFINITIONS: readonly ColumnDefinition[] = [
     required: false,
     sortField: null,
     align: 'left',
+    quietHeader: false,
   },
   {
     id: 'declineReason',
@@ -137,6 +138,19 @@ const DEFINITIONS: readonly ColumnDefinition[] = [
     required: false,
     sortField: null,
     align: 'left',
+    quietHeader: false,
+  },
+  {
+    id: 'paymentId',
+    label: 'Payment ID',
+    visible: true,
+    width: 150,
+    minWidth: 140,
+    maxWidth: 320,
+    required: true,
+    sortField: null,
+    align: 'left',
+    quietHeader: false,
   },
 ];
 
@@ -144,8 +158,6 @@ export const DEFAULT_COLUMNS: readonly ColumnConfig[] = DEFINITIONS.map((definit
   ...definition,
   order,
 }));
-
-export const COLUMN_IDS: readonly ColumnId[] = DEFAULT_COLUMNS.map((column) => column.id);
 
 export function clampColumnWidth(column: ColumnConfig, width: number): number {
   return Math.min(Math.max(Math.round(width), column.minWidth), column.maxWidth);
@@ -195,7 +207,7 @@ export function mergeColumnPreferences(
     return { column: { ...column, width, order, visible }, userOrdered };
   });
 
-  // On equal positions the user's stored order wins over a default one.
+  // When two columns claim the same position, the saved one wins.
   return merged
     .sort(
       (a, b) => a.column.order - b.column.order || Number(b.userOrdered) - Number(a.userOrdered),

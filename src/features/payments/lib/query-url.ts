@@ -20,9 +20,10 @@ import {
 } from '../model/transaction';
 
 /**
- * Shareable URL format: view, q, datePreset, dateFrom, dateTo, status,
- * method, currency, brand, minAmount, maxAmount, sort, direction, page and
- * pageSize. Defaults are omitted to keep links short.
+ * URL format, also used by saved filters: view, q, datePreset, dateFrom,
+ * dateTo, status, method, currency, brand, minAmount, maxAmount, sort,
+ * direction, page and pageSize. Default values are left out to keep links
+ * short.
  */
 export type SearchParamsInput =
   URLSearchParams | Readonly<Record<string, string | readonly string[] | undefined>>;
@@ -54,7 +55,8 @@ function parseList<T extends string>(value: string | null, allowed: readonly T[]
 
   const requested = new Set(raw.split(',').map((entry) => entry.trim()));
 
-  // Canonical option order, duplicates and unknown values dropped.
+  // Unknown values and duplicates are dropped, and the order is always the
+  // same.
   return allowed.filter((option) => requested.has(option));
 }
 

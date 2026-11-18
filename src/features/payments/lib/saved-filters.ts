@@ -2,9 +2,9 @@ import type { PaymentsQuery } from '../model/query';
 import { parsePaymentsQuery, serializePaymentsQuery } from './query-url';
 
 /**
- * Saved filters store the query in the same format as the shareable URL,
- * so one validated parser restores both. The page number is never saved;
- * column preferences and selection are view state and stay out as well.
+ * A saved filter stores the query as a URL query string, so the same parser
+ * restores links and saved filters. The page number isn't saved, and neither
+ * are column settings or selection.
  */
 export interface SavedFilter {
   readonly id: string;
@@ -53,7 +53,7 @@ export function sortSavedFilters(items: readonly SavedFilter[]): readonly SavedF
   return [...items].sort((a, b) => a.name.localeCompare(b.name));
 }
 
-/** Parses stored JSON defensively; anything invalid is dropped, never thrown. */
+/** Skips anything malformed or from an older version instead of throwing. */
 export function parseSavedFilters(raw: string | null): readonly SavedFilter[] {
   if (raw === null) {
     return [];

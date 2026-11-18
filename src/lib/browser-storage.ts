@@ -3,9 +3,9 @@
 import { useSyncExternalStore } from 'react';
 
 /**
- * localStorage wrapper that never throws (private mode, quota, disabled
- * storage) and notifies subscribers in the same tab and across tabs.
- * When storage is unavailable, values live in memory for the session.
+ * localStorage that doesn't throw (private mode, full quota, storage turned
+ * off) and tells subscribers about changes in this tab and others. Without
+ * storage, values live in memory until the page reloads.
  */
 const memoryFallback = new Map<string, string | null>();
 const listeners = new Set<() => void>();
@@ -55,9 +55,9 @@ function subscribe(listener: () => void): () => void {
 }
 
 /**
- * Raw stored string for `key`. The server snapshot is always `null`, so the
- * first client render matches the server HTML and the stored value is
- * applied right after hydration (no hydration mismatch).
+ * The stored string for `key`. On the server it is always null, so the first
+ * client render matches the server HTML and the stored value shows up right
+ * after hydration.
  */
 export function useStoredString(key: string): string | null {
   return useSyncExternalStore(

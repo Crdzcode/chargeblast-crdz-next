@@ -7,9 +7,8 @@ import { Tooltip } from './tooltip';
 export const UNAVAILABLE_MESSAGE = 'Not available in this demo';
 
 /**
- * Wraps a control that exists in the reference but is outside this demo's
- * scope. It keeps the reference look while saying so on hover and focus,
- * instead of pretending to navigate or act.
+ * For controls that are on the Stripe screen but outside this demo. They keep
+ * their look and say "Not available in this demo" on hover and focus.
  */
 export function Unavailable({
   children,

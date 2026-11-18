@@ -17,10 +17,10 @@ export default function PaymentsPage() {
   return (
     <>
       <PaymentsPageHeader />
-      <div className="mt-0.5">
+      <div className="mt-[5px]">
         <TransactionsTabs />
       </div>
-      <div className="mt-6">
+      <div className="mt-[22px]">
         <AnnouncementBanner />
       </div>
       <div className="mt-4">

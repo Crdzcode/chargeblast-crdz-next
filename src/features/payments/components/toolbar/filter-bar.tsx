@@ -15,7 +15,7 @@ import {
   type Currency,
 } from '../../model/transaction';
 import { FilterChip } from '../filters/filter-chip';
-import { AmountPanel, ChecklistPanel, DatePanel } from '../filters/filter-panels';
+import { AmountPanel, ChecklistPanel, DatePanel, SearchPanel } from '../filters/filter-panels';
 
 const CURRENCY_CODES = Object.fromEntries(CURRENCIES.map((code) => [code, code])) as Record<
   Currency,
@@ -30,7 +30,11 @@ const METHOD_OPTIONS = toOptions(PAYMENT_METHOD_TYPES, PAYMENT_METHOD_TYPE_LABEL
 const CURRENCY_OPTIONS = toOptions(CURRENCIES, CURRENCY_CODES);
 const BRAND_OPTIONS = toOptions(CARD_BRANDS, CARD_BRAND_LABELS);
 
-/** The chip row in the reference order: Date and time, Amount, Currency, Status, Payment method, More filters. */
+/**
+ * Filter chips in Stripe's order: Date and time, Amount, Currency, Status,
+ * Payment method, More filters. A search from the top bar adds a Search chip at
+ * the end.
+ */
 export function FilterBar({
   query,
   onChange,
@@ -145,6 +149,20 @@ export function FilterBar({
           />
         )}
       </FilterChip>
+
+      {query.search !== '' ? (
+        <FilterChip label="Search" summary={query.search} onClear={() => onChange({ search: '' })}>
+          {(close) => (
+            <SearchPanel
+              value={query.search}
+              onApply={(search) => {
+                onChange({ search });
+                close();
+              }}
+            />
+          )}
+        </FilterChip>
+      ) : null}
     </div>
   );
 }

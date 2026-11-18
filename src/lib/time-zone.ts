@@ -1,13 +1,18 @@
-/**
- * Time-zone helpers built on Intl only (no date library).
+/*
+ * Time zone helpers on top of Intl, no date library.
  *
- * The dashboard renders every date in one explicit account time zone, the
- * same way Stripe shows dates in the account's zone. Server and client
- * therefore format and resolve date ranges identically, regardless of the
- * machine's local zone, which keeps SSR and hydration in sync.
+ * Like Stripe, the dashboard shows every date in the account's time zone
+ * rather than the machine's. Server and browser therefore format dates and
+ * resolve ranges the same way, and hydration matches.
  */
 
 export const APP_TIME_ZONE = 'America/Sao_Paulo';
+
+/**
+ * For UI copy; change it together with APP_TIME_ZONE. Brazil dropped daylight
+ * saving in 2019, so the offset is fixed.
+ */
+export const APP_TIME_ZONE_LABEL = 'GMT-3';
 
 export const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -169,8 +174,4 @@ export function parseCalendarDate(value: string | null | undefined): CalendarDat
   }
 
   return date;
-}
-
-export function compareCalendarDates(a: CalendarDate, b: CalendarDate): number {
-  return Date.UTC(a.year, a.month - 1, a.day) - Date.UTC(b.year, b.month - 1, b.day);
 }

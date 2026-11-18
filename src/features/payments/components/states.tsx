@@ -3,7 +3,7 @@ import { CircleAlert, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 
-/** Shown when no payment matches the filters (or the dataset is empty). */
+/** No payment matches the filters, or there are no payments at all. */
 export function EmptyState({
   filtered,
   onClearFilters,
@@ -33,17 +33,23 @@ export function EmptyState({
   );
 }
 
-export function ErrorState({ onRetry }: { readonly onRetry: () => void }) {
+export function ErrorState({
+  onRetry,
+  title = 'Payments could not be loaded',
+  message = 'Something went wrong while loading payment data.',
+}: {
+  readonly onRetry: () => void;
+  readonly title?: string;
+  readonly message?: string;
+}) {
   return (
     <div
       role="alert"
       className="flex flex-col items-center gap-2 border-y border-line px-4 py-16 text-center"
     >
       <CircleAlert className="mb-1 size-6 text-danger-fg" aria-hidden />
-      <h2 className="text-[16px] font-semibold">Payments could not be loaded</h2>
-      <p className="max-w-sm text-[14px] text-fg-secondary">
-        Something went wrong while loading payment data.
-      </p>
+      <h2 className="text-[16px] font-semibold">{title}</h2>
+      <p className="max-w-sm text-[14px] text-fg-secondary">{message}</p>
       <Button className="mt-2" onClick={onRetry}>
         Try again
       </Button>
@@ -51,7 +57,7 @@ export function ErrorState({ onRetry }: { readonly onRetry: () => void }) {
   );
 }
 
-/** Table-shaped skeleton used while the route streams in. */
+/** Placeholder rows while the page loads. */
 export function TableSkeleton({ rows = 12 }: { readonly rows?: number }) {
   return (
     <div aria-busy="true" aria-label="Loading payments" role="status">

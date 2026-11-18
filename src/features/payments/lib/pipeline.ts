@@ -1,5 +1,3 @@
-import { APP_TIME_ZONE } from '@/lib/time-zone';
-
 import {
   DEFAULT_PAGE_SIZE,
   PAGE_SIZES,
@@ -27,15 +25,13 @@ export interface Pagination {
 export interface PaymentsResult {
   /** Every matching row in display order (used by "Export current view"). */
   readonly rows: readonly Transaction[];
-  /** The rows of the current page. */
   readonly pageRows: readonly Transaction[];
   readonly pagination: Pagination;
 }
 
 export interface PipelineContext {
-  /** Reference instant used to resolve relative date presets. */
+  /** "Now" for the relative date presets. */
   readonly now: number;
-  readonly timeZone?: string;
 }
 
 /** Case-insensitive match on payment ID, customer email or last 4 digits. */
@@ -58,7 +54,7 @@ export function filterTransactions(
   query: PaymentsQuery,
   context: PipelineContext,
 ): readonly Transaction[] {
-  const range = resolveDateFilter(query.date, context.now, context.timeZone ?? APP_TIME_ZONE);
+  const range = resolveDateFilter(query.date, context.now);
 
   return transactions.filter((transaction) => {
     if (!matchesStatusView(transaction, query.view)) {
@@ -114,15 +110,15 @@ export function filterTransactions(
 
 const COMPARATORS: Record<SortField, (a: Transaction, b: Transaction) => number> = {
   createdAt: (a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt),
-  // Nominal minor units: no FX conversion is invented for mixed currencies.
+  // Raw minor units across currencies; there are no exchange rates to apply.
   amount: (a, b) => a.amountMinor - b.amountMinor,
-  // Alphabetical by the visible label (Failed, Pending, Refunded, Succeeded).
+  // Alphabetical by the label the user sees.
   status: (a, b) => STATUS_LABELS[a.status].localeCompare(STATUS_LABELS[b.status]),
 };
 
 /**
- * Stable sort that never mutates its input. Ties fall back to newest first
- * and then the id, so the order is deterministic in both directions.
+ * Returns a sorted copy. Ties go newest first, then by id, so the order is the
+ * same on every run.
  */
 export function sortTransactions(
   transactions: readonly Transaction[],
@@ -166,10 +162,7 @@ export function paginate<T>(
   };
 }
 
-/**
- * The single query pipeline used everywhere: search and filters first,
- * sorting over the whole filtered result, pagination last.
- */
+/** Search and filter, sort the whole result, then cut out the current page. */
 export function runPaymentsQuery(
   transactions: readonly Transaction[],
   query: PaymentsQuery,

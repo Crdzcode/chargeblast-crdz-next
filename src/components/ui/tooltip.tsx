@@ -14,9 +14,9 @@ export function TooltipProvider({ children }: { readonly children: ReactNode }) 
 }
 
 export interface TooltipProps {
-  /** Tooltip body; rendered only while open (safe for time-dependent text). */
+  /** Only rendered while open, so it can hold text that depends on the current time. */
   readonly content: ReactNode | (() => ReactNode);
-  /** A single focusable element (hover and keyboard focus both open it). */
+  /** One focusable element. Hovering it or focusing it with the keyboard opens the tooltip. */
   readonly children: ReactNode;
   readonly side?: 'top' | 'right' | 'bottom' | 'left';
   readonly align?: 'start' | 'center' | 'end';

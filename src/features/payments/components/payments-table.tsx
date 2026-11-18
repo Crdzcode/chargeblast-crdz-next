@@ -1,61 +1,36 @@
 'use client';
 
-import {
-  DndContext,
-  KeyboardSensor,
-  PointerSensor,
-  closestCenter,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-  type Modifier,
-} from '@dnd-kit/core';
-import {
-  SortableContext,
-  arrayMove,
-  horizontalListSortingStrategy,
-  sortableKeyboardCoordinates,
-  useSortable,
-} from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
-import { ArrowDown, ArrowUp, GripVertical } from 'lucide-react';
-import { useId, useState, type CSSProperties, type KeyboardEvent, type PointerEvent } from 'react';
+import { DndContext, closestCenter, type DragEndEvent, type Modifier } from '@dnd-kit/core';
+import { SortableContext, horizontalListSortingStrategy } from '@dnd-kit/sortable';
+import { useId } from 'react';
 
 import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/cn';
 
-import { DECLINE_REASON_LABELS } from '../lib/presentation';
-import {
-  clampColumnWidth,
-  reorderColumns,
-  setColumnWidth,
-  visibleColumns,
-  type ColumnConfig,
-  type ColumnId,
-} from '../model/columns';
-import type { SortDirection, SortField } from '../model/query';
-import type { Transaction } from '../model/transaction';
-import {
-  AmountCell,
-  DateCell,
-  EmptyValue,
-  PaymentIdCell,
-  PaymentMethodCell,
-  StatusBadge,
-} from './cells';
+import { STATUS_LABELS } from '../lib/presentation';
+import { visibleColumns, type ColumnConfig } from '../model/columns';
+import { DEFAULT_PAYMENTS_QUERY, type SortDirection, type SortField } from '../model/query';
+import { isSelectablePayment, type Transaction } from '../model/transaction';
 import { RowActions } from './row-actions';
+import { CellContent } from './table/cell-content';
+import { reorderAfterDrag, useColumnDragSensors } from './table/column-drag';
+import { SortableHeader } from './table/sortable-header';
+import { useColumnResize } from './table/use-column-resize';
 
 const SELECTION_WIDTH = 36;
 const ACTIONS_WIDTH = 44;
-const RESIZE_STEP = 8;
-const RESIZE_STEP_LARGE = 32;
 
-/** Keeps header drags on the horizontal axis. */
+/** Header drags only move sideways. */
 const horizontalOnly: Modifier = ({ transform }) => ({ ...transform, y: 0 });
 
-/** Ignore row clicks that come from an interactive child. */
-const INTERACTIVE_SELECTOR =
-  'a, button, input, label, [role="checkbox"], [role="menuitem"], [data-row-ignore]';
+/** State of the select-all box for the rows on this page. */
+function pageSelectionState(selected: number, selectable: number): boolean | 'indeterminate' {
+  if (selectable > 0 && selected === selectable) return true;
+  return selected > 0 ? 'indeterminate' : false;
+}
+
+/** Clicks on these inside a row should not open the payment. */
+const INTERACTIVE_SELECTOR = 'a, button, input, label, [role="checkbox"], [role="menuitem"]';
 
 export interface PaymentsTableProps {
   readonly rows: readonly Transaction[];
@@ -70,12 +45,7 @@ export interface PaymentsTableProps {
   readonly onOpenPayment: (id: string) => void;
 }
 
-/**
- * Semantic payments table driven by the column model: header labels, cells,
- * widths, order, sorting, drag-to-reorder and resizing all read the same
- * configuration. Resizing keeps a draft width while dragging and commits a
- * single preference write on release.
- */
+/** Headers, cells, widths, order and sorting all come from the column model in model/columns.ts. */
 export function PaymentsTable({
   rows,
   columns,
@@ -89,95 +59,27 @@ export function PaymentsTable({
   onOpenPayment,
 }: PaymentsTableProps) {
   const dndId = useId();
-  const [draftWidths, setDraftWidths] = useState<Partial<Record<ColumnId, number>>>({});
+  const { widthOf, startResize, resizeWithKeyboard } = useColumnResize(columns, onColumnsChange);
   const shown = visibleColumns(columns);
-  const widthOf = (column: ColumnConfig) => draftWidths[column.id] ?? column.width;
   const tableWidth =
     SELECTION_WIDTH + ACTIONS_WIDTH + shown.reduce((sum, column) => sum + widthOf(column), 0);
+  const isDefaultSort =
+    sortBy === DEFAULT_PAYMENTS_QUERY.sortBy &&
+    sortDirection === DEFAULT_PAYMENTS_QUERY.sortDirection;
 
-  const selectedOnPage = rows.filter((row) => selectedIds.has(row.id)).length;
-  const pageState: boolean | 'indeterminate' =
-    rows.length > 0 && selectedOnPage === rows.length
-      ? true
-      : selectedOnPage > 0
-        ? 'indeterminate'
-        : false;
+  const selectable = rows.filter(isSelectablePayment);
+  const selectedOnPage = selectable.filter((row) => selectedIds.has(row.id)).length;
+  const pageState = pageSelectionState(selectedOnPage, selectable.length);
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
-  );
+  const sensors = useColumnDragSensors();
 
-  const handleDragEnd = ({ active, over }: DragEndEvent) => {
-    if (!over || active.id === over.id) {
-      return;
-    }
-
-    const ids = shown.map((column) => column.id);
-    const reordered = arrayMove(
-      ids,
-      ids.indexOf(active.id as ColumnId),
-      ids.indexOf(over.id as ColumnId),
-    );
-    // Hidden columns keep their relative place after the visible ones.
-    onColumnsChange(reorderColumns(columns, reordered));
+  const handleDragEnd = (event: DragEndEvent) => {
+    const reordered = reorderAfterDrag(columns, shown, event);
+    if (reordered) onColumnsChange(reordered);
   };
 
   const toggleSort = (field: SortField) => {
     onSortChange(field, sortBy === field && sortDirection === 'desc' ? 'asc' : 'desc');
-  };
-
-  const commitWidth = (column: ColumnConfig, width: number) => {
-    if (width !== column.width) {
-      onColumnsChange(setColumnWidth(columns, column.id, width));
-    }
-  };
-
-  const startResize = (event: PointerEvent<HTMLSpanElement>, column: ColumnConfig) => {
-    event.preventDefault();
-    event.stopPropagation();
-
-    const handle = event.currentTarget;
-    const startX = event.clientX;
-    const startWidth = widthOf(column);
-    let latest = startWidth;
-
-    handle.setPointerCapture(event.pointerId);
-
-    const onMove = (move: globalThis.PointerEvent) => {
-      latest = clampColumnWidth(column, startWidth + move.clientX - startX);
-      setDraftWidths((draft) => ({ ...draft, [column.id]: latest }));
-    };
-
-    const onUp = () => {
-      handle.removeEventListener('pointermove', onMove);
-      handle.removeEventListener('pointerup', onUp);
-      handle.removeEventListener('pointercancel', onUp);
-      setDraftWidths((draft) => {
-        const rest = { ...draft };
-        delete rest[column.id];
-
-        return rest;
-      });
-      commitWidth(column, latest);
-    };
-
-    handle.addEventListener('pointermove', onMove);
-    handle.addEventListener('pointerup', onUp);
-    handle.addEventListener('pointercancel', onUp);
-  };
-
-  const onResizeKey = (event: KeyboardEvent<HTMLSpanElement>, column: ColumnConfig) => {
-    if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') {
-      return;
-    }
-
-    event.preventDefault();
-    const step = event.shiftKey ? RESIZE_STEP_LARGE : RESIZE_STEP;
-    commitWidth(
-      column,
-      clampColumnWidth(column, column.width + (event.key === 'ArrowRight' ? step : -step)),
-    );
   };
 
   return (
@@ -217,7 +119,7 @@ export function PaymentsTable({
                   <Checkbox
                     aria-label="Select all payments on this page"
                     checked={pageState}
-                    disabled={rows.length === 0}
+                    disabled={selectable.length === 0}
                     onCheckedChange={(checked) => onTogglePage(checked === true)}
                   />
                 </th>
@@ -227,9 +129,10 @@ export function PaymentsTable({
                     column={column}
                     sortBy={sortBy}
                     sortDirection={sortDirection}
+                    isDefaultSort={isDefaultSort}
                     onToggleSort={toggleSort}
                     onResizeStart={startResize}
-                    onResizeKey={onResizeKey}
+                    onResizeKey={resizeWithKeyboard}
                     width={widthOf(column)}
                   />
                 ))}
@@ -246,6 +149,7 @@ export function PaymentsTable({
           <tbody>
             {rows.map((row) => {
               const selected = selectedIds.has(row.id);
+              const canSelect = isSelectablePayment(row);
 
               return (
                 <tr
@@ -263,8 +167,13 @@ export function PaymentsTable({
                 >
                   <td className="h-9 border-b border-line pl-1">
                     <Checkbox
-                      aria-label={`Select payment ${row.id}`}
+                      aria-label={
+                        canSelect
+                          ? `Select payment ${row.id}`
+                          : `${STATUS_LABELS[row.status]} payment ${row.id} cannot be selected`
+                      }
                       checked={selected}
+                      disabled={!canSelect}
                       onCheckedChange={(checked) => onToggleRow(row.id, checked === true)}
                     />
                   </td>
@@ -295,144 +204,4 @@ export function PaymentsTable({
       </div>
     </DndContext>
   );
-}
-
-function SortableHeader({
-  column,
-  width,
-  sortBy,
-  sortDirection,
-  onToggleSort,
-  onResizeStart,
-  onResizeKey,
-}: {
-  readonly column: ColumnConfig;
-  readonly width: number;
-  readonly sortBy: SortField;
-  readonly sortDirection: SortDirection;
-  readonly onToggleSort: (field: SortField) => void;
-  readonly onResizeStart: (event: PointerEvent<HTMLSpanElement>, column: ColumnConfig) => void;
-  readonly onResizeKey: (event: KeyboardEvent<HTMLSpanElement>, column: ColumnConfig) => void;
-}) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    setActivatorNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: column.id });
-  const active = column.sortField !== null && column.sortField === sortBy;
-  const ariaSort = active ? (sortDirection === 'asc' ? 'ascending' : 'descending') : undefined;
-  const style: CSSProperties = {
-    transform: CSS.Translate.toString(transform),
-    transition,
-    width,
-  };
-  const SortIcon = active && sortDirection === 'asc' ? ArrowUp : ArrowDown;
-
-  return (
-    <th
-      ref={setNodeRef}
-      scope="col"
-      // Announce just the label; the handles inside have their own names.
-      aria-label={column.label}
-      aria-sort={ariaSort}
-      style={style}
-      className={cn(
-        'group/th relative h-9 border-y border-y-line-strong border-b-line bg-canvas px-2 text-[13px] font-semibold whitespace-nowrap text-fg',
-        column.align === 'right' ? 'text-right' : 'text-left',
-        isDragging && 'z-10 shadow-popover',
-      )}
-    >
-      <span
-        className={cn(
-          'flex min-w-0 items-center gap-0.5',
-          column.align === 'right' && 'justify-end',
-          column.id === 'amount' && 'pr-10',
-        )}
-      >
-        <button
-          ref={setActivatorNodeRef}
-          type="button"
-          aria-label={`Reorder ${column.label} column`}
-          className="absolute top-1/2 left-0 inline-flex h-5 w-2.5 -translate-y-1/2 cursor-grab items-center justify-center rounded-sm text-fg-disabled opacity-0 transition-opacity group-hover/th:opacity-100 focus-visible:opacity-100 active:cursor-grabbing"
-          {...attributes}
-          {...listeners}
-        >
-          <GripVertical className="size-3" aria-hidden />
-        </button>
-        {column.sortField === null ? (
-          <span className="truncate">{column.label}</span>
-        ) : (
-          <button
-            type="button"
-            onClick={() => column.sortField && onToggleSort(column.sortField)}
-            className="relative inline-flex max-w-full min-w-0 items-center rounded-sm hover:text-primary-text"
-          >
-            <span className="truncate">{column.label}</span>
-            {/* Out of the flow so the label keeps the full width and its edge
-                stays aligned with the values (left of right-aligned labels). */}
-            <SortIcon
-              className={cn(
-                'absolute top-1/2 size-3 -translate-y-1/2 transition-opacity',
-                column.align === 'right' ? 'right-full mr-1' : 'left-full ml-1',
-                active ? 'opacity-100' : 'opacity-0 group-hover/th:opacity-40',
-              )}
-              aria-hidden
-            />
-          </button>
-        )}
-      </span>
-      <span
-        role="separator"
-        aria-orientation="vertical"
-        aria-label={`Resize ${column.label} column`}
-        aria-valuenow={width}
-        aria-valuemin={column.minWidth}
-        aria-valuemax={column.maxWidth}
-        tabIndex={0}
-        onPointerDown={(event) => onResizeStart(event, column)}
-        onKeyDown={(event) => onResizeKey(event, column)}
-        className="absolute top-0 -right-[3px] z-[2] h-full w-[7px] cursor-col-resize touch-none after:absolute after:top-1/4 after:right-[3px] after:h-1/2 after:w-px after:bg-transparent group-hover/th:after:bg-line-strong hover:after:w-0.5 hover:after:bg-primary focus-visible:after:w-0.5 focus-visible:after:bg-primary"
-      />
-    </th>
-  );
-}
-
-function CellContent({ column, transaction }: { column: ColumnId; transaction: Transaction }) {
-  switch (column) {
-    case 'amount':
-      return <AmountCell amountMinor={transaction.amountMinor} currency={transaction.currency} />;
-    case 'status':
-      return <StatusBadge status={transaction.status} />;
-    case 'paymentMethod':
-      return <PaymentMethodCell method={transaction.paymentMethod} />;
-    case 'description':
-      return <span className="block truncate text-fg">{transaction.description}</span>;
-    case 'customer':
-      return (
-        <span className="block truncate text-fg" title={transaction.customer.email}>
-          {transaction.customer.email}
-        </span>
-      );
-    case 'paymentId':
-      return <PaymentIdCell id={transaction.id} />;
-    case 'created':
-      return <DateCell iso={transaction.createdAt} />;
-    case 'refundedDate':
-      return transaction.refundedAt ? <DateCell iso={transaction.refundedAt} /> : <EmptyValue />;
-    case 'declineReason':
-      return transaction.declineReason ? (
-        <span
-          className="block truncate text-fg"
-          title={DECLINE_REASON_LABELS[transaction.declineReason]}
-        >
-          {DECLINE_REASON_LABELS[transaction.declineReason]}
-        </span>
-      ) : (
-        <EmptyValue />
-      );
-  }
 }

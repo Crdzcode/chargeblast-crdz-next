@@ -1,21 +1,7 @@
 'use client';
 
-import {
-  DndContext,
-  KeyboardSensor,
-  PointerSensor,
-  closestCenter,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-} from '@dnd-kit/core';
-import {
-  SortableContext,
-  arrayMove,
-  sortableKeyboardCoordinates,
-  useSortable,
-  verticalListSortingStrategy,
-} from '@dnd-kit/sortable';
+import { DndContext, closestCenter, type DragEndEvent } from '@dnd-kit/core';
+import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { ChevronDown, ChevronUp, GripVertical, Settings } from 'lucide-react';
 import { useId } from 'react';
@@ -27,17 +13,16 @@ import { cn } from '@/lib/cn';
 
 import {
   moveColumn,
-  reorderColumns,
   setColumnVisibility,
   sortColumns,
   type ColumnConfig,
-  type ColumnId,
 } from '../../model/columns';
+import { reorderAfterDrag, useColumnDragSensors } from '../table/column-drag';
 
 /**
- * Column visibility and order. Drag the handle, or use the up/down buttons
- * (and Space + arrow keys on the handle) from the keyboard. Required
- * columns can move but not be hidden.
+ * Show, hide and reorder columns. Drag the handle, or use the up and down
+ * buttons (or Space and the arrow keys on the handle). Required columns can
+ * move but can't be hidden.
  */
 export function EditColumns({
   columns,
@@ -50,21 +35,11 @@ export function EditColumns({
 }) {
   const dndId = useId();
   const ordered = sortColumns(columns);
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
-  );
+  const sensors = useColumnDragSensors();
 
-  const handleDragEnd = ({ active, over }: DragEndEvent) => {
-    if (!over || active.id === over.id) return;
-
-    const ids = ordered.map((column) => column.id);
-    onChange(
-      reorderColumns(
-        columns,
-        arrayMove(ids, ids.indexOf(active.id as ColumnId), ids.indexOf(over.id as ColumnId)),
-      ),
-    );
+  const handleDragEnd = (event: DragEndEvent) => {
+    const reordered = reorderAfterDrag(columns, ordered, event);
+    if (reordered) onChange(reordered);
   };
 
   return (

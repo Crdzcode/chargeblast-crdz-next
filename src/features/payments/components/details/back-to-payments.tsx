@@ -5,14 +5,15 @@ import type { Route } from 'next';
 import Link from 'next/link';
 import { useSyncExternalStore } from 'react';
 
-import { PAYMENTS_PATH, readLastListUrl } from '../../hooks/use-payments-query';
+import { readLastListUrl } from '../../hooks/use-payments-query';
+import { PAYMENTS_PATH } from '../../routes';
 
 const noopSubscribe = () => () => {};
 
 /**
- * Link back to the Payments list, restoring the filters the user came from.
- * The server renders the plain list URL; the stored URL is applied after
- * hydration, so markup never mismatches.
+ * Back to the list with the filters the user had. The server renders the plain
+ * list URL and the stored one replaces it after hydration, so the markup
+ * matches.
  */
 export function BackToPayments() {
   const href = useSyncExternalStore(noopSubscribe, readLastListUrl, () => PAYMENTS_PATH);

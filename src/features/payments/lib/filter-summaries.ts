@@ -40,9 +40,8 @@ export function summarizeDate(filter: DateFilter | null): string | null {
 }
 
 /**
- * Amount summary with inclusive bounds. The currency symbol is shown only
- * when exactly one currency is filtered; otherwise values are plain numbers
- * because the comparison is nominal across currencies.
+ * The amount chip's value. The currency symbol only shows when exactly one
+ * currency is filtered, since amounts are otherwise compared across currencies.
  */
 export function summarizeAmount(
   min: number | null,

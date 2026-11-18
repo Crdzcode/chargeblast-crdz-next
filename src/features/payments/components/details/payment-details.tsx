@@ -1,6 +1,7 @@
 import { CreditCard } from 'lucide-react';
 import type { ReactNode } from 'react';
 
+import { CopyButton } from '@/components/ui/copy-button';
 import { cn } from '@/lib/cn';
 
 import { formatAmount, formatFullDateTime, formatShortDateTime } from '../../lib/format';
@@ -15,33 +16,10 @@ import type { PaymentMethod, Transaction } from '../../model/transaction';
 import { PaymentMethodIcons } from '../brand-icons';
 import { StatusBadge } from '../cells';
 import { BackToPayments } from './back-to-payments';
-import { CopyButton } from './copy-button';
 
-function Section({ title, children }: { readonly title: string; readonly children: ReactNode }) {
-  return (
-    <section aria-labelledby={`section-${title}`} className="flex flex-col">
-      <h2
-        id={`section-${title}`}
-        className="border-b border-line-strong pb-2 text-[16px] font-bold"
-      >
-        {title}
-      </h2>
-      <div className="pt-3">{children}</div>
-    </section>
-  );
-}
-
-function DefinitionList({ items }: { readonly items: readonly (readonly [string, ReactNode])[] }) {
-  return (
-    <dl className="grid grid-cols-[minmax(120px,180px)_1fr] gap-x-6 gap-y-2.5 text-[14px]">
-      {items.map(([term, value]) => (
-        <div key={term} className="contents">
-          <dt className="text-fg-secondary">{term}</dt>
-          <dd className="min-w-0 break-words text-fg">{value}</dd>
-        </div>
-      ))}
-    </dl>
-  );
+interface Field {
+  readonly label: string;
+  readonly value: ReactNode;
 }
 
 const TONE_DOT: Record<TimelineTone, string> = {
@@ -52,51 +30,133 @@ const TONE_DOT: Record<TimelineTone, string> = {
   info: 'bg-primary',
 };
 
-function methodDetails(method: PaymentMethod): readonly (readonly [string, ReactNode])[] {
+function Section({ title, children }: { readonly title: string; readonly children: ReactNode }) {
+  const headingId = `section-${title.toLowerCase().replaceAll(' ', '-')}`;
+
+  return (
+    <section aria-labelledby={headingId} className="flex flex-col">
+      <h2 id={headingId} className="border-b border-line-strong pb-2 text-[16px] font-bold">
+        {title}
+      </h2>
+      <div className="pt-3">{children}</div>
+    </section>
+  );
+}
+
+function DefinitionList({ fields }: { readonly fields: readonly Field[] }) {
+  return (
+    <dl className="grid grid-cols-[minmax(120px,180px)_1fr] gap-x-6 gap-y-2.5 text-[14px]">
+      {fields.map(({ label, value }) => (
+        <div key={label} className="contents">
+          <dt className="text-fg-secondary">{label}</dt>
+          <dd className="min-w-0 break-words text-fg">{value}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
+function MaskedNumber({ last4, prefix }: { readonly last4: string; readonly prefix?: string }) {
+  return (
+    <span className="tabular">
+      {prefix ? `${prefix} ` : null}•••• {last4}
+    </span>
+  );
+}
+
+function summaryFields(transaction: Transaction): Field[] {
+  const fields: Field[] = [
+    {
+      label: 'Date',
+      value: (
+        <time dateTime={transaction.createdAt}>{formatShortDateTime(transaction.createdAt)}</time>
+      ),
+    },
+    { label: 'Customer', value: transaction.customer.email },
+    {
+      label: 'Payment method',
+      value: (
+        <span className="inline-flex items-center gap-1.5">
+          <PaymentMethodIcons method={transaction.paymentMethod} />
+          <MaskedNumber last4={transaction.paymentMethod.last4} />
+        </span>
+      ),
+    },
+  ];
+
+  if (transaction.declineReason) {
+    fields.push({
+      label: 'Decline reason',
+      value: DECLINE_REASON_LABELS[transaction.declineReason],
+    });
+  }
+
+  if (transaction.refundedAt) {
+    fields.push({ label: 'Refunded', value: formatShortDateTime(transaction.refundedAt) });
+  }
+
+  return fields;
+}
+
+function paymentMethodFields(method: PaymentMethod): Field[] {
   switch (method.type) {
     case 'card':
       return [
-        ['Type', `${CARD_BRAND_LABELS[method.brand]} ${method.funding} card`],
-        [
-          'Number',
-          <span key="n" className="tabular">
-            •••• {method.last4}
-          </span>,
-        ],
-        [
-          'Expires',
-          <span key="e" className="tabular">
-            {String(method.expMonth).padStart(2, '0')} / {method.expYear}
-          </span>,
-        ],
-        ['Issuing country', method.country],
+        { label: 'Type', value: `${CARD_BRAND_LABELS[method.brand]} ${method.funding} card` },
+        { label: 'Number', value: <MaskedNumber last4={method.last4} /> },
+        {
+          label: 'Expires',
+          value: (
+            <span className="tabular">
+              {String(method.expMonth).padStart(2, '0')} / {method.expYear}
+            </span>
+          ),
+        },
+        { label: 'Issuing country', value: method.country },
       ];
     case 'wallet':
       return [
-        ['Type', `${WALLET_LABELS[method.wallet]} wallet`],
-        ['Card network', CARD_BRAND_LABELS[method.brand]],
-        [
-          'Number',
-          <span key="n" className="tabular">
-            •••• {method.last4}
-          </span>,
-        ],
+        { label: 'Type', value: `${WALLET_LABELS[method.wallet]} wallet` },
+        { label: 'Card network', value: CARD_BRAND_LABELS[method.brand] },
+        { label: 'Number', value: <MaskedNumber last4={method.last4} /> },
       ];
     case 'ach':
       return [
-        ['Type', 'ACH Direct Debit'],
-        ['Bank', method.bankName],
-        [
-          'Account',
-          <span key="a" className="tabular">
-            {method.accountType} •••• {method.last4}
-          </span>,
-        ],
+        { label: 'Type', value: 'ACH Direct Debit' },
+        { label: 'Bank', value: method.bankName },
+        {
+          label: 'Account',
+          value: <MaskedNumber last4={method.last4} prefix={method.accountType} />,
+        },
       ];
   }
 }
 
-/** Payment details page body: summary, timeline, payment method, details and metadata. */
+function detailFields(transaction: Transaction): Field[] {
+  const { amountMinor, currency, customer } = transaction;
+
+  return [
+    {
+      label: 'Payment ID',
+      value: <span className="font-mono text-[13px] break-all">{transaction.id}</span>,
+    },
+    { label: 'Amount', value: `${formatAmount(amountMinor, currency)} ${currency}` },
+    { label: 'Description', value: transaction.description },
+    { label: 'Created', value: formatFullDateTime(transaction.createdAt) },
+    { label: 'Captured', value: transaction.captured ? 'Yes' : 'No, awaiting capture' },
+    {
+      label: 'Customer',
+      value: (
+        <span>
+          {customer.name}
+          <br />
+          <span className="text-fg-secondary">{customer.id}</span>
+        </span>
+      ),
+    },
+  ];
+}
+
 export function PaymentDetails({ transaction }: { readonly transaction: Transaction }) {
   const timeline = buildPaymentTimeline(transaction);
   const metadata = Object.entries(transaction.metadata);
@@ -129,32 +189,9 @@ export function PaymentDetails({ transaction }: { readonly transaction: Transact
         </div>
 
         <dl className="flex flex-wrap gap-x-10 gap-y-3 border-y border-line py-3 text-[14px]">
-          {(
-            [
-              [
-                'Date',
-                <time key="d" dateTime={transaction.createdAt}>
-                  {formatShortDateTime(transaction.createdAt)}
-                </time>,
-              ],
-              ['Customer', transaction.customer.email],
-              [
-                'Payment method',
-                <span key="m" className="inline-flex items-center gap-1.5">
-                  <PaymentMethodIcons method={transaction.paymentMethod} />
-                  <span className="tabular">•••• {transaction.paymentMethod.last4}</span>
-                </span>,
-              ],
-              ...(transaction.declineReason
-                ? ([['Decline reason', DECLINE_REASON_LABELS[transaction.declineReason]]] as const)
-                : []),
-              ...(transaction.refundedAt
-                ? ([['Refunded', formatShortDateTime(transaction.refundedAt)]] as const)
-                : []),
-            ] as const
-          ).map(([term, value]) => (
-            <div key={term} className="flex flex-col gap-0.5">
-              <dt className="text-[13px] text-fg-secondary">{term}</dt>
+          {summaryFields(transaction).map(({ label, value }) => (
+            <div key={label} className="flex flex-col gap-0.5">
+              <dt className="text-[13px] text-fg-secondary">{label}</dt>
               <dd className="font-medium">{value}</dd>
             </div>
           ))}
@@ -188,11 +225,11 @@ export function PaymentDetails({ transaction }: { readonly transaction: Transact
 
           <Section title="Payment method">
             <DefinitionList
-              items={[
-                ['Description', describePaymentMethod(transaction.paymentMethod)],
-                ...methodDetails(transaction.paymentMethod),
-                ['Owner', transaction.customer.name],
-                ['Owner email', transaction.customer.email],
+              fields={[
+                { label: 'Description', value: describePaymentMethod(transaction.paymentMethod) },
+                ...paymentMethodFields(transaction.paymentMethod),
+                { label: 'Owner', value: transaction.customer.name },
+                { label: 'Owner email', value: transaction.customer.email },
               ]}
             />
           </Section>
@@ -200,31 +237,7 @@ export function PaymentDetails({ transaction }: { readonly transaction: Transact
 
         <div className="flex flex-col gap-10">
           <Section title="Details">
-            <DefinitionList
-              items={[
-                [
-                  'Payment ID',
-                  <span key="id" className="inline-flex items-center gap-1">
-                    <span className="font-mono text-[13px] break-all">{transaction.id}</span>
-                  </span>,
-                ],
-                [
-                  'Amount',
-                  `${formatAmount(transaction.amountMinor, transaction.currency)} ${transaction.currency}`,
-                ],
-                ['Description', transaction.description],
-                ['Created', formatFullDateTime(transaction.createdAt)],
-                ['Captured', transaction.captured ? 'Yes' : 'No — awaiting capture'],
-                [
-                  'Customer',
-                  <span key="c">
-                    {transaction.customer.name}
-                    <br />
-                    <span className="text-fg-secondary">{transaction.customer.id}</span>
-                  </span>,
-                ],
-              ]}
-            />
+            <DefinitionList fields={detailFields(transaction)} />
           </Section>
 
           <Section title="Metadata">
@@ -232,15 +245,10 @@ export function PaymentDetails({ transaction }: { readonly transaction: Transact
               <p className="text-[14px] text-fg-secondary">No metadata</p>
             ) : (
               <DefinitionList
-                items={metadata.map(
-                  ([key, value]) =>
-                    [
-                      key,
-                      <span key={key} className="font-mono text-[13px]">
-                        {value}
-                      </span>,
-                    ] as const,
-                )}
+                fields={metadata.map(([key, value]) => ({
+                  label: key,
+                  value: <span className="font-mono text-[13px]">{value}</span>,
+                }))}
               />
             )}
           </Section>

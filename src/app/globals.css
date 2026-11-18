@@ -1,8 +1,8 @@
 @import 'tailwindcss';
 
 /*
- * Design tokens sampled from the reference screenshot (Stripe Dashboard,
- * Payments). Names are semantic so components never hard-code hex values.
+ * Colors picked from the Stripe Payments screenshot. Components use these names
+ * instead of hex values.
  */
 @theme {
   --font-sans:
@@ -29,6 +29,8 @@
   --color-primary-pressed: #4b44d4;
   --color-primary-text: #533afd;
   --color-primary-subtle: #f2f1ff;
+  --color-account-logo: #d9d4ff;
+  --color-notification: #3a7cf0;
 
   --color-success-bg: #ecfbe0;
   --color-success-line: #b8ef81;

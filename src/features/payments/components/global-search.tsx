@@ -1,38 +1,65 @@
 'use client';
 
-import { CornerDownLeft, Search, User } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { CornerDownLeft, Search, User, X } from 'lucide-react';
+import type { Route } from 'next';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useId, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 
 import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover';
 import { cn } from '@/lib/cn';
-import { usePaymentsData } from '@/features/payments/data/payments-data-provider';
-import { formatAmount } from '@/features/payments/lib/format';
-import { matchesSearch } from '@/features/payments/lib/pipeline';
-import { shortenPaymentId } from '@/features/payments/lib/presentation';
+
+import { usePaymentsData } from '../data/payments-data-provider';
+import { readPaymentsQueryFromLocation, writePaymentsQuery } from '../hooks/use-payments-query';
+import { formatAmount } from '../lib/format';
+import { matchesSearch } from '../lib/pipeline';
+import { shortenPaymentId } from '../lib/presentation';
+import { PAYMENTS_PATH, paymentHref, paymentsSearchHref } from '../routes';
 
 const MAX_PAYMENTS = 5;
 const MAX_CUSTOMERS = 3;
 
 type Suggestion =
-  | { kind: 'payment'; id: string; title: string; detail: string; href: string }
-  | { kind: 'customer'; id: string; title: string; detail: string; href: string }
-  | { kind: 'all'; id: string; title: string; detail: string; href: string };
+  | { kind: 'search'; id: string; title: string; detail: string; term: string }
+  | { kind: 'payment' | 'customer'; id: string; title: string; detail: string; href: Route };
+
+const SUGGESTION_ICONS = { search: Search, payment: CornerDownLeft, customer: User };
+
+function SuggestionIcon({ kind }: { kind: Suggestion['kind'] }) {
+  const Icon = SUGGESTION_ICONS[kind];
+
+  return <Icon className="size-3.5" aria-hidden />;
+}
 
 /**
- * Dashboard-wide search in the top bar (distinct from the table search).
- * It suggests matching payments and customers and opens the payment
- * details or the Payments list filtered by the term. ⌘/Ctrl+K focuses it.
+ * The search field in the top bar. Enter filters the payments list (the term
+ * goes in the URL as `q`); a suggestion opens that payment, or that
+ * customer's payments.
  */
 export function GlobalSearch() {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const listId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
   const { transactions } = usePaymentsData();
-  const [term, setTerm] = useState('');
+  const onPaymentsList = pathname === PAYMENTS_PATH;
+  const listTerm = onPaymentsList ? (searchParams.get('q') ?? '') : null;
+
+  const [term, setTerm] = useState(listTerm ?? '');
+  const [syncedTerm, setSyncedTerm] = useState(listTerm);
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
   const trimmed = term.trim();
+
+  // Pick up the term when the URL changes under us (chip removed, Back,
+  // saved filter). Setting state during render saves an effect pass.
+  if (listTerm !== syncedTerm) {
+    setSyncedTerm(listTerm);
+
+    if (listTerm !== null) {
+      setTerm(listTerm);
+    }
+  }
 
   const suggestions = useMemo<readonly Suggestion[]>(() => {
     if (trimmed.length < 2) return [];
@@ -54,37 +81,55 @@ export function GlobalSearch() {
           id: row.customer.id,
           title: row.customer.name,
           detail: row.customer.email,
-          href: `/transactions/payments?q=${encodeURIComponent(row.customer.email)}`,
+          href: paymentsSearchHref(row.customer.email),
         });
       }
     }
 
     return [
+      {
+        kind: 'search',
+        id: 'search',
+        title: `Search payments for “${trimmed}”`,
+        detail: 'Payment ID, email or last 4 digits',
+        term: trimmed,
+      },
       ...payments.map<Suggestion>((row) => ({
         kind: 'payment',
         id: row.id,
         title: `${formatAmount(row.amountMinor, row.currency)} ${row.currency}`,
         detail: `${shortenPaymentId(row.id)} · ${row.customer.email}`,
-        href: `/transactions/payments/${row.id}`,
+        href: paymentHref(row.id),
       })),
       ...customers.values(),
-      {
-        kind: 'all',
-        id: 'all',
-        title: `Search payments for “${trimmed}”`,
-        detail: 'Payment ID, email or last 4 digits',
-        href: `/transactions/payments?q=${encodeURIComponent(trimmed)}`,
-      },
     ];
   }, [transactions, trimmed]);
 
-  const go = (suggestion: Suggestion | undefined) => {
-    if (!suggestion) return;
+  /** An empty value clears the search. Other filters are kept. */
+  const applySearch = (value: string) => {
+    setOpen(false);
+
+    if (onPaymentsList) {
+      writePaymentsQuery({ ...readPaymentsQueryFromLocation(), search: value, page: 1 });
+    } else if (value !== '') {
+      router.push(paymentsSearchHref(value));
+    }
+  };
+
+  const choose = (suggestion: Suggestion | undefined) => {
+    if (!suggestion) {
+      applySearch(trimmed);
+      return;
+    }
+
+    if (suggestion.kind === 'search') {
+      applySearch(suggestion.term);
+      return;
+    }
 
     setOpen(false);
     setTerm('');
-    // Typed routes cannot express dynamic query strings; hrefs are built above.
-    router.push(suggestion.href as Parameters<typeof router.push>[0]);
+    router.push(suggestion.href);
   };
 
   const onKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
@@ -97,7 +142,7 @@ export function GlobalSearch() {
       );
     } else if (event.key === 'Enter') {
       event.preventDefault();
-      go(suggestions[activeIndex]);
+      choose(suggestions[activeIndex]);
     } else if (event.key === 'Escape') {
       setOpen(false);
     }
@@ -108,7 +153,7 @@ export function GlobalSearch() {
   return (
     <Popover open={showList} onOpenChange={setOpen}>
       <PopoverAnchor asChild>
-        <div className="relative w-full max-w-[552px]">
+        <div className="relative w-full max-w-[552px]" role="search">
           <Search
             className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-fg-muted"
             aria-hidden
@@ -121,7 +166,7 @@ export function GlobalSearch() {
             aria-controls={listId}
             aria-autocomplete="list"
             aria-activedescendant={showList ? `${listId}-${activeIndex}` : undefined}
-            aria-label="Search"
+            aria-label="Search payments by ID, email or last 4 digits"
             placeholder="Search"
             value={term}
             onChange={(event) => {
@@ -131,8 +176,22 @@ export function GlobalSearch() {
             }}
             onFocus={() => setOpen(true)}
             onKeyDown={onKeyDown}
-            className="h-[34px] w-full rounded-control bg-surface pr-3 pl-9 text-[15px] text-fg placeholder:text-fg-secondary focus-visible:bg-canvas focus-visible:shadow-[0_0_0_1px_var(--color-line-strong)]"
+            className="h-[34px] w-full rounded-control bg-surface pr-8 pl-9 text-[15px] text-fg placeholder:text-fg-secondary focus-visible:bg-canvas focus-visible:shadow-[0_0_0_1px_var(--color-line-strong)]"
           />
+          {term !== '' ? (
+            <button
+              type="button"
+              aria-label="Clear search"
+              onClick={() => {
+                setTerm('');
+                applySearch('');
+                inputRef.current?.focus();
+              }}
+              className="absolute top-1/2 right-2 inline-flex size-5 -translate-y-1/2 items-center justify-center rounded-full text-fg-muted hover:bg-surface-hover hover:text-fg"
+            >
+              <X className="size-3.5" aria-hidden />
+            </button>
+          ) : null}
         </div>
       </PopoverAnchor>
       <PopoverContent
@@ -152,20 +211,14 @@ export function GlobalSearch() {
               aria-selected={index === activeIndex}
               onMouseEnter={() => setActiveIndex(index)}
               onMouseDown={(event) => event.preventDefault()}
-              onClick={() => go(suggestion)}
+              onClick={() => choose(suggestion)}
               className={cn(
                 'flex cursor-pointer items-center gap-3 rounded-control px-2.5 py-1.5',
                 index === activeIndex && 'bg-surface-hover',
               )}
             >
               <span className="inline-flex size-6 shrink-0 items-center justify-center rounded-control bg-surface text-fg-muted">
-                {suggestion.kind === 'customer' ? (
-                  <User className="size-3.5" aria-hidden />
-                ) : suggestion.kind === 'all' ? (
-                  <Search className="size-3.5" aria-hidden />
-                ) : (
-                  <CornerDownLeft className="size-3.5" aria-hidden />
-                )}
+                <SuggestionIcon kind={suggestion.kind} />
               </span>
               <span className="flex min-w-0 flex-col">
                 <span className="truncate text-[14px] font-medium">{suggestion.title}</span>

@@ -1,11 +1,13 @@
 'use client';
 
-import { Bell, CircleHelp, LayoutGrid, Menu, Plus, Settings, X } from 'lucide-react';
+import { Bell, CircleHelp, Menu, Plus, Settings, X } from 'lucide-react';
 import { Dialog } from 'radix-ui';
+import { Suspense } from 'react';
 
 import { Unavailable } from '@/components/ui/unavailable';
+import { GlobalSearch } from '@/features/payments/components/global-search';
 
-import { GlobalSearch } from './global-search';
+import { AppsDock } from './apps-dock';
 import { SidebarContent } from './sidebar';
 
 function IconButton({ label, children }: { label: string; children: React.ReactNode }) {
@@ -21,6 +23,10 @@ function IconButton({ label, children }: { label: string; children: React.ReactN
       </button>
     </Unavailable>
   );
+}
+
+function SearchFallback() {
+  return <div className="h-[34px] w-full max-w-[552px] rounded-control bg-surface" aria-hidden />;
 }
 
 function MobileNavigation() {
@@ -50,34 +56,29 @@ function MobileNavigation() {
   );
 }
 
-/** Top bar: global search, the test-mode notice, app shortcuts and account actions. */
 export function Topbar() {
   return (
-    <header className="sticky top-0 z-30 flex h-[60px] items-center gap-3 bg-canvas px-4 md:px-10">
+    <header className="sticky top-0 z-30 flex h-[53px] items-center gap-3 bg-canvas px-4 md:px-10">
       <MobileNavigation />
-      <GlobalSearch />
+      {/* useSearchParams needs a Suspense boundary; the fallback is an empty
+          field of the same size. */}
+      <Suspense fallback={<SearchFallback />}>
+        <GlobalSearch />
+      </Suspense>
       <div className="ml-auto flex shrink-0 items-center gap-2">
-        <p className="hidden text-[15px] text-fg xl:block">
+        <p className="hidden text-[14.5px] text-fg xl:block">
           Test mode has moved.{' '}
           <Unavailable>
-            <button type="button" aria-disabled="true" className="underline underline-offset-2">
+            <button
+              type="button"
+              aria-disabled="true"
+              className="ml-1 underline underline-offset-2"
+            >
               Show me
             </button>
           </Unavailable>
         </p>
-        <Unavailable>
-          <button
-            type="button"
-            aria-label="Apps"
-            aria-disabled="true"
-            className="ml-2 hidden h-8 items-center gap-2 rounded-full border border-line px-2.5 md:inline-flex"
-          >
-            <span aria-hidden className="size-4 rounded-[4px] bg-[#0a0a0a]" />
-            <span aria-hidden className="size-4 rounded-[4px] bg-[#3b9cf1]" />
-            <span aria-hidden className="size-4 rounded-[4px] bg-[#16a34a]" />
-            <LayoutGrid className="size-4 text-fg-secondary" aria-hidden />
-          </button>
-        </Unavailable>
+        <AppsDock />
         <IconButton label="Help">
           <CircleHelp className="size-[18px]" aria-hidden />
         </IconButton>
@@ -85,7 +86,7 @@ export function Topbar() {
           <Bell className="size-[18px]" aria-hidden />
           <span
             aria-hidden
-            className="absolute top-1.5 right-1.5 size-1.5 rounded-full bg-primary"
+            className="absolute top-1.5 right-1.5 size-1.5 rounded-full bg-notification"
           />
         </IconButton>
         <IconButton label="Settings">
@@ -96,9 +97,9 @@ export function Topbar() {
             type="button"
             aria-label="Create"
             aria-disabled="true"
-            className="inline-flex size-[26px] items-center justify-center rounded-full bg-primary text-white hover:bg-primary-hover"
+            className="ml-1 inline-flex size-5 items-center justify-center rounded-full bg-primary text-white hover:bg-primary-hover"
           >
-            <Plus className="size-4" strokeWidth={2.5} aria-hidden />
+            <Plus className="size-3.5" strokeWidth={2.75} aria-hidden />
           </button>
         </Unavailable>
       </div>

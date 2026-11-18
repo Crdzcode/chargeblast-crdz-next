@@ -2,11 +2,9 @@ import type { Transaction } from '../model/transaction';
 import { generateTransactions } from './generate-transactions';
 
 /**
- * In-memory data access for the mock dataset. Kept behind small functions
- * so a real API could replace it without touching the UI.
- *
- * The dataset is a pure function of the reference instant, so results are
- * memoized per instant (server requests and client renders reuse them).
+ * Data access for the mock payments. A real API could replace these two
+ * functions without the UI noticing. The data only depends on `now`, so the
+ * last result is cached.
  */
 let lastSnapshot: { readonly now: number; readonly transactions: readonly Transaction[] } | null =
   null;

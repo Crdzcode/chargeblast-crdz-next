@@ -6,12 +6,12 @@ import type { ComponentProps } from 'react';
 
 import { cn } from '@/lib/cn';
 
-/** 14px Stripe-style checkbox with checked and indeterminate states. */
+/** Disabled boxes are filled grey, like the rows Stripe doesn't let you select. */
 export function Checkbox({ className, ...props }: ComponentProps<typeof CheckboxPrimitive.Root>) {
   return (
     <CheckboxPrimitive.Root
       className={cn(
-        'peer inline-flex size-4 shrink-0 items-center justify-center rounded-[4px] border border-line-strong bg-canvas shadow-control transition-colors duration-100 hover:border-fg-muted data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=indeterminate]:border-primary data-[state=indeterminate]:bg-primary',
+        'peer inline-flex size-4 shrink-0 items-center justify-center rounded-[4px] border border-line-strong bg-canvas shadow-control transition-colors duration-100 hover:border-fg-muted disabled:cursor-not-allowed disabled:border-line-strong disabled:bg-surface-pressed disabled:shadow-none data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=indeterminate]:border-primary data-[state=indeterminate]:bg-primary',
         className,
       )}
       {...props}

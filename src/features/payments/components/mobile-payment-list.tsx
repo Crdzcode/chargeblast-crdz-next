@@ -6,12 +6,13 @@ import { Checkbox } from '@/components/ui/checkbox';
 
 import { formatShortDateTime } from '../lib/format';
 import { shortenPaymentId } from '../lib/presentation';
-import type { Transaction } from '../model/transaction';
+import { isSelectablePayment, type Transaction } from '../model/transaction';
+import { paymentHref } from '../routes';
 import { AmountCell, PaymentMethodCell, StatusBadge } from './cells';
 
 /**
- * Compact list for narrow screens: the same data as the table's required
- * columns, stacked, with selection and a link to the details page.
+ * Replaces the table on narrow screens: the required columns stacked in a card,
+ * with selection and a link to the payment.
  */
 export function MobilePaymentList({
   rows,
@@ -30,12 +31,10 @@ export function MobilePaymentList({
             className="mt-0.5"
             aria-label={`Select payment ${row.id}`}
             checked={selectedIds.has(row.id)}
+            disabled={!isSelectablePayment(row)}
             onCheckedChange={(checked) => onToggleRow(row.id, checked === true)}
           />
-          <Link
-            href={`/transactions/payments/${row.id}`}
-            className="flex min-w-0 flex-1 flex-col gap-1.5"
-          >
+          <Link href={paymentHref(row.id)} className="flex min-w-0 flex-1 flex-col gap-1.5">
             <span className="flex items-center justify-between gap-2">
               <AmountCell amountMinor={row.amountMinor} currency={row.currency} />
               <StatusBadge status={row.status} />

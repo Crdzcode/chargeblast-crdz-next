@@ -1,7 +1,7 @@
 /**
- * Copies text and resolves to whether it actually worked, so the UI only
- * shows "Copied" after a confirmed write. Falls back to execCommand for
- * insecure contexts where the async Clipboard API is unavailable.
+ * Copies text and resolves to whether it worked, so the UI only says "Copied"
+ * when it's true. Falls back to execCommand where the Clipboard API isn't
+ * available (plain http).
  */
 export async function copyText(text: string): Promise<boolean> {
   try {

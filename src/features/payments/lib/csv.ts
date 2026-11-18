@@ -4,8 +4,8 @@ import { formatAmount } from './format';
 import { DECLINE_REASON_LABELS, STATUS_LABELS, describePaymentMethod } from './presentation';
 
 /**
- * Full (never abbreviated) CSV value per column. Dates are ISO 8601 for
- * interoperability; amounts are unambiguous, e.g. "$21.98 USD".
+ * The CSV value for each column. IDs are never shortened, dates are ISO 8601
+ * and amounts include the currency, e.g. "$21.98 USD".
  */
 const COLUMN_VALUES: Record<ColumnId, (transaction: Transaction) => string> = {
   amount: (transaction) =>
@@ -21,20 +21,20 @@ const COLUMN_VALUES: Record<ColumnId, (transaction: Transaction) => string> = {
     transaction.declineReason ? DECLINE_REASON_LABELS[transaction.declineReason] : '',
 };
 
-/** Cells that could be interpreted as formulas by spreadsheet apps. */
+/** Spreadsheet apps would run a cell starting with one of these as a formula. */
 const FORMULA_PREFIX = /^[=+\-@\t\r]/;
 
-/** RFC 4180 escaping plus CSV-injection hardening for user-controlled text. */
+/** Quotes values per RFC 4180 and defuses formulas in user-entered text. */
 export function escapeCsvValue(value: string): string {
   const safe = FORMULA_PREFIX.test(value) ? `'${value}` : value;
 
   return /[",\r\n]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe;
 }
 
-/**
- * Builds an RFC 4180 CSV (CRLF line endings, UTF-8 BOM for spreadsheet
- * apps) using exactly the given columns in the given order.
- */
+/** Makes Excel open the file as UTF-8, so "€" and "£" survive. */
+const UTF8_BOM = '\uFEFF';
+
+/** RFC 4180 CSV (CRLF line endings) with exactly these columns, in this order. */
 export function buildPaymentsCsv(
   transactions: readonly Transaction[],
   columns: readonly ColumnConfig[],
@@ -44,7 +44,7 @@ export function buildPaymentsCsv(
     columns.map((column) => escapeCsvValue(COLUMN_VALUES[column.id](transaction))).join(','),
   );
 
-  return `﻿${[header, ...rows].join('\r\n')}\r\n`;
+  return `${UTF8_BOM}${[header, ...rows].join('\r\n')}\r\n`;
 }
 
 /** Suggested filename, e.g. `payments-2026-11-18-1405.csv` (local wall clock). */

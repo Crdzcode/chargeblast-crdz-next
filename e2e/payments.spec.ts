@@ -24,12 +24,8 @@ async function openChip(page: Page, label: string) {
     .click();
 }
 
-/** Column headers also contain the "Reorder … column" handle in their accessible name. */
-const columnHeader = (page: Page, label: string) =>
-  page.getByRole('columnheader', { name: new RegExp(`${label}$`) }).first();
-
 test.describe('Payments list', () => {
-  test('renders the reference layout with the six required columns and no console errors', async ({
+  test('renders the Stripe layout with the six required columns and no console errors', async ({
     page,
   }) => {
     const errors = trackConsole(page);
@@ -41,9 +37,25 @@ test.describe('Payments list', () => {
         page.getByRole('group', { name: 'Payment views' }).getByRole('button', { name: label }),
       ).toBeVisible();
     }
-    for (const header of ['Amount', 'Status', 'Payment method', 'Customer', 'Payment ID', 'Date']) {
-      await expect(columnHeader(page, header)).toBeVisible();
-    }
+    const headers = await page
+      .getByRole('columnheader')
+      .evaluateAll((cells) => cells.map((cell) => cell.getAttribute('aria-label')).filter(Boolean));
+    // Stripe's order, with Payment ID added at the end.
+    expect(headers).toEqual([
+      'Amount',
+      'Status',
+      'Payment method',
+      'Description',
+      'Customer',
+      'Date',
+      'Refunded date',
+      'Decline reason',
+      'Payment ID',
+    ]);
+    // By default the chip row only has Stripe's chips: no search box and no
+    // saved filters button.
+    await expect(page.getByRole('searchbox')).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Saved filters' })).toHaveCount(0);
     await expect(rows(page)).toHaveCount(25);
     await expect(summary(page)).toContainText('Viewing 1–25 of');
     expect(errors).toEqual([]);
@@ -90,11 +102,11 @@ test.describe('Payments list', () => {
     await page.goto(LIST);
 
     await openChip(page, 'Status');
-    await page.getByRole('checkbox', { name: 'Failed' }).click();
+    await page.getByRole('checkbox', { name: 'Failed', exact: true }).click();
     await page.getByRole('button', { name: 'Apply' }).click();
 
     await openChip(page, 'Payment method');
-    await page.getByRole('checkbox', { name: 'Card' }).click();
+    await page.getByRole('checkbox', { name: 'Card', exact: true }).click();
     await page.getByRole('button', { name: 'Apply' }).click();
 
     await expect(page).toHaveURL(/status=failed/);
@@ -117,40 +129,69 @@ test.describe('Payments list', () => {
     await page.getByRole('button', { name: 'Apply' }).click();
 
     await expect(page).toHaveURL(/minAmount=10000&maxAmount=20000/);
-    for (const text of await rows(page)
-      .locator('td:nth-child(2) .font-semibold')
-      .allTextContents()) {
-      const value = Number(text.replace(/[^\d.]/g, ''));
-      expect(value).toBeGreaterThanOrEqual(100);
-      expect(value).toBeLessThanOrEqual(200);
-    }
+    // The URL updates before the table re-renders, so poll until the rows settle.
+    await expect
+      .poll(async () => {
+        const values = (
+          await rows(page).locator('td:nth-child(2) .font-semibold').allTextContents()
+        ).map((text) => Number(text.replace(/[^\d.]/g, '')));
+
+        return values.length > 0 && values.every((value) => value >= 100 && value <= 200);
+      })
+      .toBe(true);
   });
 
-  test('searches by last 4 digits, email and payment ID', async ({ page }) => {
-    await page.goto(LIST);
+  test('searches by last 4 digits, email and payment ID from the top bar', async ({ page }) => {
+    await page.goto(`${LIST}?status=succeeded`);
     const firstRow = rows(page).first();
     const last4 =
       (await firstRow.locator('[role="img"]').first().textContent())?.replace(/\D/g, '') ?? '';
     const email = (await firstRow.locator('td:nth-child(6)').textContent())?.trim() ?? '';
-    const search = page.getByRole('searchbox', { name: /Search payments/ });
+    const search = page.getByRole('combobox', { name: /Search payments/ });
 
     await search.fill(last4);
-    await expect(page).toHaveURL(new RegExp(`q=${last4}`));
+    await search.press('Enter');
+    await expect(page).toHaveURL(new RegExp(`q=${last4}&status=succeeded`));
     for (const text of await rows(page).allTextContents()) expect(text).toContain(last4);
+    await expect(page.getByRole('group', { name: 'Filters' })).toContainText(`Search${last4}`);
 
     await search.fill(email);
+    await search.press('Enter');
     await expect(page).toHaveURL(/q=.*%40/);
     for (const text of await rows(page).locator('td:nth-child(6)').allTextContents()) {
       expect(text).toContain(email);
     }
+
+    // Removing the Search chip clears the search and the top bar field.
+    await page.getByRole('button', { name: 'Clear Search filter' }).click();
+    await expect(search).toHaveValue('');
+    await expect(page).toHaveURL(/\/transactions\/payments\?status=succeeded$/);
 
     await rows(page).first().getByRole('cell').nth(4).click();
     await expect(page).toHaveURL(/\/transactions\/payments\/pi_3/);
     const id = page.url().split('/').pop() ?? '';
 
     await page.goto(LIST);
-    await page.getByRole('searchbox', { name: /Search payments/ }).fill(id.toUpperCase());
+    await search.fill(id.toUpperCase());
+    await search.press('Enter');
     await expect(rows(page)).toHaveCount(1);
+  });
+
+  test('shows all six statuses and disables selection where no action applies', async ({
+    page,
+  }) => {
+    await page.goto(`${LIST}?status=canceled,blocked&pageSize=100`);
+    const badges = await rows(page).locator('td:nth-child(3)').allTextContents();
+
+    expect(new Set(badges.map((text) => text.trim()))).toEqual(new Set(['Canceled', 'Blocked']));
+    await expect(rows(page).first().getByRole('checkbox')).toBeDisabled();
+    await expect(
+      page.getByRole('checkbox', { name: 'Select all payments on this page' }),
+    ).toBeDisabled();
+
+    await page.goto(`${LIST}?view=failed&pageSize=100`);
+    const failedView = await rows(page).locator('td:nth-child(3)').allTextContents();
+    expect(failedView.every((text) => /^(Failed|Blocked)/.test(text.trim()))).toBe(true);
   });
 
   test('sorts by amount ascending', async ({ page }) => {
@@ -287,10 +328,29 @@ test.describe('Shell', () => {
     await page.goto(LIST);
     const email = (await rows(page).first().locator('td:nth-child(6)').textContent())?.trim() ?? '';
 
-    await page.getByRole('combobox', { name: 'Search' }).fill(email.slice(0, 8));
+    await page.getByRole('combobox', { name: /Search payments/ }).fill(email.slice(0, 8));
     await expect(page.getByRole('listbox', { name: 'Search suggestions' })).toBeVisible();
+    // The first option searches the table; the next ones open a payment.
+    await page.keyboard.press('ArrowDown');
     await page.keyboard.press('Enter');
     await expect(page).toHaveURL(/\/transactions\/payments\/pi_3/);
+  });
+
+  test('the top bar shows the apps dock and account actions', async ({ page }) => {
+    await page.goto(LIST);
+    for (const label of [
+      'Pinned app: disputes',
+      'Pinned app: analytics',
+      'Pinned app: alerts',
+      'Apps',
+      'Help',
+      'Notifications',
+      'Settings',
+      'Create',
+    ]) {
+      await expect(page.getByRole('banner').getByRole('button', { name: label })).toBeVisible();
+    }
+    await expect(page.getByRole('banner')).toContainText('Test mode has moved.');
   });
 
   test('account menu opens from the sidebar', async ({ page }) => {
@@ -301,5 +361,29 @@ test.describe('Shell', () => {
       'aria-disabled',
       'true',
     );
+  });
+});
+
+test.describe('Mobile @mobile', () => {
+  test('lists payments without horizontal scrolling and opens the details', async ({ page }) => {
+    const errors = trackConsole(page);
+    await page.goto(LIST);
+
+    const items = page.getByRole('list', { name: 'Payments' }).getByRole('listitem');
+    await expect(items).toHaveCount(25);
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth),
+    ).toBeLessThanOrEqual(0);
+
+    await page.getByRole('button', { name: 'Open navigation' }).click();
+    await expect(
+      page.getByRole('dialog').getByRole('link', { name: 'Transactions' }),
+    ).toBeVisible();
+    await page.keyboard.press('Escape');
+
+    await items.first().getByRole('link').click();
+    await expect(page).toHaveURL(/\/transactions\/payments\/pi_3/);
+    await expect(page.getByRole('heading', { name: 'Timeline' })).toBeVisible();
+    expect(errors).toEqual([]);
   });
 });

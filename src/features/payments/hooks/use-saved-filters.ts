@@ -20,7 +20,7 @@ function createId(): string {
     : `filter_${Date.now().toString(36)}`;
 }
 
-/** Named saved filters persisted in localStorage (this browser only). */
+/** Saved filters, kept in localStorage (this browser only). */
 export function useSavedFilters() {
   const raw = useStoredString(SAVED_FILTERS_STORAGE_KEY);
   const filters = useMemo(() => parseSavedFilters(raw), [raw]);

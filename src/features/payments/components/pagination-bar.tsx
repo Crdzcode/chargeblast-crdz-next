@@ -8,7 +8,7 @@ import { formatCount } from '../lib/format';
 import type { Pagination } from '../lib/pipeline';
 import { PAGE_SIZES, type PageSize } from '../model/query';
 
-/** "Viewing 1–25 of 964 results", rows per page and Previous / Next. */
+/** "Viewing 1–25 of 964 results", the rows-per-page select and Previous / Next. */
 export function PaginationBar({
   pagination,
   onPageChange,
@@ -45,27 +45,29 @@ export function PaginationBar({
         {selection}
       </div>
       <div className="flex items-center gap-2">
-        <label className="flex items-center gap-2 text-[13px] text-fg-secondary">
-          Rows per page
-          <select
-            value={pagination.pageSize}
-            onChange={(event) => onPageSizeChange(Number(event.target.value) as PageSize)}
-            className="h-7 rounded-control border border-line-strong bg-canvas pr-1 pl-1.5 text-[14px] text-fg shadow-control"
-          >
-            {PAGE_SIZES.map((size) => (
-              <option key={size} value={size}>
-                {size}
-              </option>
-            ))}
-          </select>
-        </label>
+        <select
+          aria-label="Rows per page"
+          value={pagination.pageSize}
+          onChange={(event) => onPageSizeChange(Number(event.target.value) as PageSize)}
+          className="h-6 rounded-control border border-line-strong bg-canvas pr-1 pl-1.5 text-[13px] font-semibold text-fg shadow-control"
+        >
+          {PAGE_SIZES.map((size) => (
+            <option key={size} value={size}>
+              {size} rows
+            </option>
+          ))}
+        </select>
         <span className="sr-only">
           Page {page} of {Math.max(totalPages, 1)}
         </span>
-        <Button disabled={!pagination.hasPreviousPage} onClick={() => onPageChange(page - 1)}>
+        <Button
+          size="xs"
+          disabled={!pagination.hasPreviousPage}
+          onClick={() => onPageChange(page - 1)}
+        >
           Previous
         </Button>
-        <Button disabled={!pagination.hasNextPage} onClick={() => onPageChange(page + 1)}>
+        <Button size="xs" disabled={!pagination.hasNextPage} onClick={() => onPageChange(page + 1)}>
           Next
         </Button>
       </div>

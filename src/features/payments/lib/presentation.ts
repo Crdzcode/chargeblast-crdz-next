@@ -1,6 +1,5 @@
 import type {
   CardBrand,
-  Currency,
   DeclineReason,
   PaymentMethod,
   PaymentMethodType,
@@ -13,6 +12,8 @@ export const STATUS_LABELS: Record<PaymentStatus, string> = {
   pending: 'Pending',
   failed: 'Failed',
   refunded: 'Refunded',
+  canceled: 'Canceled',
+  blocked: 'Blocked',
 };
 
 export const PAYMENT_METHOD_TYPE_LABELS: Record<PaymentMethodType, string> = {
@@ -32,13 +33,6 @@ export const WALLET_LABELS: Record<WalletProvider, string> = {
   link: 'Link',
   apple_pay: 'Apple Pay',
   google_pay: 'Google Pay',
-};
-
-export const CURRENCY_LABELS: Record<Currency, string> = {
-  USD: 'USD — US dollar',
-  BRL: 'BRL — Brazilian real',
-  EUR: 'EUR — Euro',
-  GBP: 'GBP — British pound',
 };
 
 export const DECLINE_REASON_LABELS: Record<DeclineReason, string> = {

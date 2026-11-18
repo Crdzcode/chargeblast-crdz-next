@@ -5,13 +5,17 @@ import { useCallback, useEffect, useMemo } from 'react';
 
 import { parsePaymentsQuery, toQueryString } from '../lib/query-url';
 import type { PaymentsQuery } from '../model/query';
+import { PAYMENTS_PATH } from '../routes';
 
-export const PAYMENTS_PATH = '/transactions/payments';
 const LIST_URL_KEY = 'payments:last-list-url';
 
 export type HistoryMode = 'push' | 'replace';
 
-/** Last list URL (with filters) so the details page can link back to it. */
+/**
+ * The list URL the user last saw, so the details page can link back to it.
+ * Kept in sessionStorage (per tab), unlike the localStorage helpers in
+ * lib/browser-storage.ts.
+ */
 export function readLastListUrl(): string {
   try {
     const stored = window.sessionStorage.getItem(LIST_URL_KEY);
@@ -26,15 +30,33 @@ function rememberListUrl(url: string): void {
   try {
     window.sessionStorage.setItem(LIST_URL_KEY, url);
   } catch {
-    // Session storage unavailable: the back link falls back to the plain list.
+    // Without session storage the back link just goes to the unfiltered list.
   }
 }
 
+export function readPaymentsQueryFromLocation(): PaymentsQuery {
+  return parsePaymentsQuery(new URLSearchParams(window.location.search));
+}
+
 /**
- * The URL is the single source of truth for the payments query. Reading
- * goes through the validated parser; writing uses the native History API,
- * which Next.js syncs with useSearchParams without a server round trip.
+ * Writes the query to the URL with the History API. Next.js picks the change
+ * up in useSearchParams without a server round trip.
  */
+export function writePaymentsQuery(next: PaymentsQuery, history: HistoryMode = 'push'): void {
+  const url = `${PAYMENTS_PATH}${toQueryString(next)}`;
+
+  if (url === `${window.location.pathname}${window.location.search}`) {
+    return;
+  }
+
+  if (history === 'replace') {
+    window.history.replaceState(null, '', url);
+  } else {
+    window.history.pushState(null, '', url);
+  }
+}
+
+/** The payments query lives in the URL; this reads it and writes it back. */
 export function usePaymentsQuery() {
   const searchParams = useSearchParams();
   const query = useMemo(
@@ -46,26 +68,12 @@ export function usePaymentsQuery() {
     rememberListUrl(`${PAYMENTS_PATH}${window.location.search}`);
   }, [searchParams]);
 
-  const setQuery = useCallback((next: PaymentsQuery, history: HistoryMode = 'push') => {
-    const url = `${PAYMENTS_PATH}${toQueryString(next)}`;
-
-    if (url === `${window.location.pathname}${window.location.search}`) {
-      return;
-    }
-
-    if (history === 'replace') {
-      window.history.replaceState(null, '', url);
-    } else {
-      window.history.pushState(null, '', url);
-    }
-  }, []);
-
-  /** Applies a filter change and returns to the first page. */
+  /** Applies a filter change and goes back to the first page. */
   const updateFilters = useCallback(
     (patch: Partial<PaymentsQuery>, history: HistoryMode = 'push') =>
-      setQuery({ ...query, ...patch, page: 1 }, history),
-    [query, setQuery],
+      writePaymentsQuery({ ...query, ...patch, page: 1 }, history),
+    [query],
   );
 
-  return { query, setQuery, updateFilters };
+  return { query, setQuery: writePaymentsQuery, updateFilters };
 }

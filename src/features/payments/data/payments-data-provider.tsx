@@ -6,7 +6,7 @@ import type { Transaction } from '../model/transaction';
 import { getTransactions } from './payments-repository';
 
 interface PaymentsData {
-  /** Server request time; every relative computation uses it, never Date.now(). */
+  /** The request time from the server. Use it instead of Date.now() for anything relative. */
   readonly referenceNow: number;
   readonly transactions: readonly Transaction[];
 }
@@ -14,10 +14,9 @@ interface PaymentsData {
 const PaymentsDataContext = createContext<PaymentsData | null>(null);
 
 /**
- * Shares the daily dataset snapshot with client components. Only the
- * reference instant crosses the server/client boundary; both sides rebuild
- * the identical dataset from it, so the RSC payload stays tiny and the
- * hydrated markup matches the server markup.
+ * Gives client components the day's data. Only the timestamp comes from the
+ * server; the browser rebuilds the same data from it, which keeps the payload
+ * small and hydration matching.
  */
 export function PaymentsDataProvider({
   referenceNow,

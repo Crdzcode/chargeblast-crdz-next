@@ -3,9 +3,8 @@ import type { ReactNode } from 'react';
 import type { CardBrand, PaymentMethod, WalletProvider } from '../model/transaction';
 
 /**
- * 20×20 brand tiles matching the reference table (a wallet tile followed by
- * the card-network tile). Inline SVG keeps them crisp, themeable and free
- * of extra requests.
+ * 20×20 brand tiles for the payment method column: the wallet first, then the
+ * card network. Inline SVG, so there are no image requests.
  */
 function Tile({ fill, stroke, children }: { fill: string; stroke?: string; children: ReactNode }) {
   return (
@@ -72,7 +71,7 @@ function CardBrandTile({ brand }: { brand: CardBrand }) {
       );
     case 'discover':
       return (
-        <Tile fill="#ffffff" stroke="#d8dee4">
+        <Tile fill="#ffffff">
           <text
             x="10"
             y="11.4"

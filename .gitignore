@@ -16,7 +16,6 @@ next-env.d.ts
 /test-results/
 /blob-report/
 /playwright/.cache/
-.playwright-mcp/
 
 # Env files
 .env*
@@ -35,18 +34,9 @@ yarn-error.log*
 .vscode/*
 !.vscode/settings.json
 !.vscode/extensions.json
-!.vscode/mcp.json
 .history/*
 
 # System files
 .DS_Store
 Thumbs.db
 
-# Claude files
-CLAUDE.md
-.claude/*
-docs/*
-
-# Codex files
-AGENTS.md
-.Codex/*

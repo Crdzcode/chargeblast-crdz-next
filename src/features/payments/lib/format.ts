@@ -6,9 +6,9 @@ import type { Currency } from '../model/transaction';
 const CURRENCY_EXPONENT: Record<Currency, number> = { USD: 2, BRL: 2, EUR: 2, GBP: 2 };
 
 /**
- * Display locale per currency. Stripe formats amounts with the currency's
- * symbol but keeps one dashboard-wide number style, so every amount uses
- * en-US separators: "$21.98", "R$ 99.99", "€19.99", "£15.99".
+ * Stripe shows each currency's symbol but one number style across the
+ * dashboard, so every amount uses en-US separators: "$21.98", "R$ 99.99",
+ * "€19.99", "£15.99".
  */
 const currencyFormatters = new Map<Currency, Intl.NumberFormat>();
 
@@ -37,7 +37,7 @@ export function toMajorUnits(amountMinor: number, currency: Currency): number {
 export function formatAmount(amountMinor: number, currency: Currency): string {
   const formatted = getCurrencyFormatter(currency).format(toMajorUnits(amountMinor, currency));
 
-  // The reference shows a space between the Brazilian real symbol and value.
+  // Stripe puts a space after R$.
   return currency === 'BRL' ? formatted.replace(/^R\$\s?/, 'R$ ') : formatted;
 }
 

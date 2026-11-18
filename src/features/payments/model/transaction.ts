@@ -1,5 +1,25 @@
-export const PAYMENT_STATUSES = ['succeeded', 'pending', 'failed', 'refunded'] as const;
+/** The four statuses from the brief, plus Canceled and Blocked, which Stripe shows too. */
+export const PAYMENT_STATUSES = [
+  'succeeded',
+  'pending',
+  'failed',
+  'refunded',
+  'canceled',
+  'blocked',
+] as const;
 export type PaymentStatus = (typeof PAYMENT_STATUSES)[number];
+
+/**
+ * Failed, canceled and blocked payments never moved money, so they can't be
+ * selected for bulk actions.
+ */
+export function isSelectablePayment(transaction: { readonly status: PaymentStatus }): boolean {
+  return (
+    transaction.status !== 'failed' &&
+    transaction.status !== 'canceled' &&
+    transaction.status !== 'blocked'
+  );
+}
 
 export const CURRENCIES = ['USD', 'BRL', 'EUR', 'GBP'] as const;
 export type Currency = (typeof CURRENCIES)[number];

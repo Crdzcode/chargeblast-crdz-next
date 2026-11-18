@@ -7,9 +7,8 @@ import type {
 } from './transaction';
 
 /**
- * Quick views shown as the wide status cards above the filters, with the
- * exact labels of the reference screenshot. They combine (AND) with the
- * Status chip instead of replacing it.
+ * The status cards above the filters. A card narrows the result together with
+ * the Status chip instead of replacing it.
  */
 export const STATUS_VIEWS = [
   'all',
@@ -39,7 +38,8 @@ export function matchesStatusView(transaction: Transaction, view: StatusView): b
     case 'refunded':
       return transaction.status === 'refunded';
     case 'failed':
-      return transaction.status === 'failed';
+      // A payment blocked by fraud rules is a failed attempt too.
+      return transaction.status === 'failed' || transaction.status === 'blocked';
     case 'disputed':
       return transaction.disputedAt !== null;
     case 'uncaptured':
@@ -59,9 +59,9 @@ export const DATE_PRESETS = ['today', '7d', '30d'] as const;
 export type DatePreset = (typeof DATE_PRESETS)[number];
 
 /**
- * Date filter. Presets stay relative ("last 7 days") so shared links keep
- * working tomorrow; custom ranges are calendar days (`YYYY-MM-DD`) in the
- * account time zone, both ends inclusive.
+ * Presets stay relative ("last 7 days"), so a shared link still works tomorrow.
+ * Custom ranges are calendar days (`YYYY-MM-DD`) in the account time zone, both
+ * ends included.
  */
 export type DateFilter =
   | { readonly preset: DatePreset }
@@ -77,8 +77,8 @@ export interface PaymentsQuery {
   readonly currencies: readonly Currency[];
   readonly brands: readonly CardBrand[];
   /**
-   * Inclusive minor-unit bounds. Amounts are compared nominally (no FX
-   * conversion); combine with the Currency filter for a single currency.
+   * Inclusive bounds in minor units, compared across currencies without
+   * conversion. Combine with the Currency filter to look at one currency.
    */
   readonly amountMinMinor: number | null;
   readonly amountMaxMinor: number | null;

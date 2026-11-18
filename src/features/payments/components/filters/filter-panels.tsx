@@ -3,22 +3,31 @@
 import { useId, useState, type FormEvent } from 'react';
 
 import { Checkbox } from '@/components/ui/checkbox';
+import { inputStyles } from '@/components/ui/input-styles';
 import { cn } from '@/lib/cn';
-import { parseCalendarDate } from '@/lib/time-zone';
+import { APP_TIME_ZONE_LABEL, parseCalendarDate } from '@/lib/time-zone';
 
+import {
+  AMOUNT_OPERATORS,
+  amountFormFromBounds,
+  amountFormToBounds,
+  type AmountForm,
+  type AmountOperator,
+} from '../../lib/amount-filter';
 import { DATE_PRESET_LABELS } from '../../lib/date-range';
 import { DATE_PRESETS, type DateFilter, type DatePreset } from '../../model/query';
 import { FilterApplyFooter } from './filter-chip';
 
-const inputClass =
-  'h-7 w-full rounded-control border border-line-strong bg-canvas px-2 text-[14px] text-fg shadow-control placeholder:text-fg-disabled focus-visible:border-primary';
+const inputClass = cn(inputStyles, 'w-full');
+const optionRowClass =
+  'flex h-8 cursor-pointer items-center gap-2.5 rounded-control px-2 text-[14px] hover:bg-surface';
 
 export interface ChecklistOption<T extends string> {
   readonly value: T;
   readonly label: string;
 }
 
-/** Multi-select checklist staged until Apply; keeps the option order. */
+/** Checked values are only applied on Apply, in the order of `options`. */
 export function ChecklistPanel<T extends string>({
   options,
   selected,
@@ -45,10 +54,7 @@ export function ChecklistPanel<T extends string>({
           const checked = draft.includes(option.value);
 
           return (
-            <label
-              key={option.value}
-              className="flex h-8 cursor-pointer items-center gap-2.5 rounded-control px-2 text-[14px] hover:bg-surface"
-            >
+            <label key={option.value} className={optionRowClass}>
               <Checkbox
                 checked={checked}
                 onCheckedChange={(next) =>
@@ -71,7 +77,6 @@ export function ChecklistPanel<T extends string>({
 
 type DateChoice = DatePreset | 'custom';
 
-/** Presets (Today, 7 days, 30 days) or an inclusive custom range. */
 export function DatePanel({
   value,
   onApply,
@@ -103,10 +108,7 @@ export function DatePanel({
       <fieldset className="flex flex-col gap-0.5 px-2 py-2">
         <legend className="sr-only">Date range</legend>
         {[...DATE_PRESETS, 'custom' as const].map((preset) => (
-          <label
-            key={preset}
-            className="flex h-8 cursor-pointer items-center gap-2.5 rounded-control px-2 text-[14px] hover:bg-surface"
-          >
+          <label key={preset} className={optionRowClass}>
             <input
               type="radio"
               name={`${id}-preset`}
@@ -147,7 +149,7 @@ export function DatePanel({
           >
             {inverted
               ? 'The start date must be on or before the end date.'
-              : 'Both days are included. Times use the account time zone (GMT-3).'}
+              : `Both days are included. Times use the account time zone (${APP_TIME_ZONE_LABEL}).`}
           </p>
         </div>
       ) : null}
@@ -156,38 +158,6 @@ export function DatePanel({
   );
 }
 
-export type AmountOperator = 'between' | 'equal' | 'greater' | 'less';
-
-const AMOUNT_OPERATORS: readonly { value: AmountOperator; label: string }[] = [
-  { value: 'between', label: 'is between' },
-  { value: 'equal', label: 'is equal to' },
-  { value: 'greater', label: 'is greater than' },
-  { value: 'less', label: 'is less than' },
-];
-
-/** Parses a major-unit input ("21.98" or "21,98") into integer cents. */
-export function parseAmountInput(value: string): number | null {
-  const trimmed = value.trim();
-
-  if (!/^\d+([.,]\d{0,2})?$/.test(trimmed)) {
-    return null;
-  }
-
-  return Math.round(Number(trimmed.replace(',', '.')) * 100);
-}
-
-function toInput(minor: number | null): string {
-  return minor === null ? '' : (minor / 100).toFixed(2);
-}
-
-function initialOperator(min: number | null, max: number | null): AmountOperator {
-  if (min !== null && max !== null) return min === max ? 'equal' : 'between';
-  if (max !== null) return 'less';
-  if (min !== null) return 'greater';
-  return 'between';
-}
-
-/** Amount range with Stripe's operators; bounds are inclusive minor units. */
 export function AmountPanel({
   min,
   max,
@@ -197,49 +167,23 @@ export function AmountPanel({
   readonly max: number | null;
   readonly onApply: (min: number | null, max: number | null) => void;
 }) {
-  const [operator, setOperator] = useState<AmountOperator>(() => initialOperator(min, max));
-  // "Greater/less than" are stored as inclusive bounds one cent inside the value.
-  const [first, setFirst] = useState(() => {
-    switch (initialOperator(min, max)) {
-      case 'greater':
-        return toInput(min === null ? null : min - 1);
-      case 'less':
-        return toInput(max === null ? null : max + 1);
-      default:
-        return toInput(min);
-    }
-  });
-  const [second, setSecond] = useState(toInput(max));
+  const [form, setForm] = useState(() => amountFormFromBounds(min, max));
   const [error, setError] = useState<string | null>(null);
+  const { operator, first, second } = form;
+
+  const edit = (patch: Partial<AmountForm>) => {
+    setForm((current) => ({ ...current, ...patch }));
+    setError(null);
+  };
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
-    const a = parseAmountInput(first);
-    const b = parseAmountInput(second);
+    const result = amountFormToBounds(form);
 
-    if (a === null || (operator === 'between' && b === null)) {
-      setError('Enter a valid amount, e.g. 19.99.');
-      return;
-    }
-
-    switch (operator) {
-      case 'between':
-        if (b !== null && a > b) {
-          setError('The minimum must not be greater than the maximum.');
-          return;
-        }
-        onApply(a, b);
-        break;
-      case 'equal':
-        onApply(a, a);
-        break;
-      case 'greater':
-        // "Greater than" is exclusive in wording; one cent above keeps bounds inclusive.
-        onApply(a + 1, null);
-        break;
-      case 'less':
-        onApply(null, Math.max(a - 1, 0));
-        break;
+    if (result.ok) {
+      onApply(result.min, result.max);
+    } else {
+      setError(result.error);
     }
   };
 
@@ -249,10 +193,7 @@ export function AmountPanel({
         <select
           aria-label="Amount condition"
           value={operator}
-          onChange={(event) => {
-            setOperator(event.target.value as AmountOperator);
-            setError(null);
-          }}
+          onChange={(event) => edit({ operator: event.target.value as AmountOperator })}
           className={inputClass}
         >
           {AMOUNT_OPERATORS.map((option) => (
@@ -267,10 +208,7 @@ export function AmountPanel({
             inputMode="decimal"
             placeholder="0.00"
             value={first}
-            onChange={(event) => {
-              setFirst(event.target.value);
-              setError(null);
-            }}
+            onChange={(event) => edit({ first: event.target.value })}
             className={inputClass}
           />
           {operator === 'between' ? (
@@ -281,10 +219,7 @@ export function AmountPanel({
                 inputMode="decimal"
                 placeholder="0.00"
                 value={second}
-                onChange={(event) => {
-                  setSecond(event.target.value);
-                  setError(null);
-                }}
+                onChange={(event) => edit({ second: event.target.value })}
                 className={inputClass}
               />
             </>
@@ -300,6 +235,38 @@ export function AmountPanel({
             compare a single currency.
           </p>
         )}
+      </div>
+      <FilterApplyFooter />
+    </form>
+  );
+}
+
+/** Edits the search started from the top bar. */
+export function SearchPanel({
+  value,
+  onApply,
+}: {
+  readonly value: string;
+  readonly onApply: (value: string) => void;
+}) {
+  const [draft, setDraft] = useState(value);
+
+  return (
+    <form
+      onSubmit={(event) => {
+        event.preventDefault();
+        onApply(draft.trim());
+      }}
+    >
+      <div className="px-4 py-3">
+        <input
+          type="search"
+          value={draft}
+          onChange={(event) => setDraft(event.target.value)}
+          aria-label="Search payments by ID, email or last 4 digits"
+          placeholder="Payment ID, email or last 4"
+          className={inputClass}
+        />
       </div>
       <FilterApplyFooter />
     </form>

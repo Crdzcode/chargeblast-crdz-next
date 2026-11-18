@@ -1,5 +1,7 @@
 import { redirect } from 'next/navigation';
 
+import { PAYMENTS_PATH } from '@/features/payments/routes';
+
 export default function HomePage() {
-  redirect('/transactions/payments');
+  redirect(PAYMENTS_PATH);
 }

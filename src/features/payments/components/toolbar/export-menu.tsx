@@ -1,8 +1,8 @@
 'use client';
 
-import { Share } from 'lucide-react';
 import { useState } from 'react';
 
+import { ExportIcon } from '@/components/icons/dashboard-icons';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -19,9 +19,9 @@ import type { ColumnConfig } from '../../model/columns';
 import type { Transaction } from '../../model/transaction';
 
 /**
- * CSV export of the current view (every row matching the filters, in the
- * current sort, all pages) or of the selected rows only. Both use the
- * visible columns in their current order.
+ * Exports either the current view (every matching row across all pages, in the
+ * current sort) or only the selected rows, with the visible columns in their
+ * current order.
  */
 export function ExportMenu({
   viewRows,
@@ -48,7 +48,7 @@ export function ExportMenu({
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button>
-            <Share className="size-3.5" aria-hidden />
+            <ExportIcon className="size-3.5" aria-hidden />
             Export
           </Button>
         </DropdownMenuTrigger>

@@ -12,6 +12,8 @@ import { formatCount } from '../lib/format';
 import { runPaymentsQuery } from '../lib/pipeline';
 import { visibleColumns } from '../model/columns';
 import { clearFilters, hasActiveFilters } from '../model/query';
+import { isSelectablePayment } from '../model/transaction';
+import { paymentHref } from '../routes';
 import { MobilePaymentList } from './mobile-payment-list';
 import { PaginationBar } from './pagination-bar';
 import { PaymentsTable } from './payments-table';
@@ -21,14 +23,13 @@ import { EditColumns } from './toolbar/edit-columns';
 import { ExportMenu } from './toolbar/export-menu';
 import { FilterBar } from './toolbar/filter-bar';
 import { SavedFiltersMenu } from './toolbar/saved-filters-menu';
-import { TableSearch } from './toolbar/table-search';
 
 /**
- * Interactive part of the Payments page. State ownership:
- * - Query (filters, search, sort, page): the URL.
- * - Column preferences and saved filters: localStorage.
- * - Row selection: component state (transient).
- * Everything derives from one pure pipeline run per query change.
+ * The interactive part of the Payments page. Where state lives:
+ * - filters, search, sort and page: the URL;
+ * - column preferences and saved filters: localStorage;
+ * - row selection: this component.
+ * What's on screen comes from runPaymentsQuery.
  */
 export function PaymentsWorkspace() {
   const router = useRouter();
@@ -49,7 +50,8 @@ export function PaymentsWorkspace() {
     [result.rows, selectedIds],
   );
 
-  // Keep the URL honest when a shared link points past the last page.
+  // A shared link can point past the last page. Fix the URL instead of showing
+  // nothing.
   useEffect(() => {
     if (pagination.totalPages > 0 && query.page !== pagination.page) {
       setQuery({ ...query, page: pagination.page }, 'replace');
@@ -70,7 +72,7 @@ export function PaymentsWorkspace() {
     setSelectedIds((current) => {
       const next = new Set(current);
 
-      for (const row of result.pageRows) {
+      for (const row of result.pageRows.filter(isSelectablePayment)) {
         if (selected) next.add(row.id);
         else next.delete(row.id);
       }
@@ -82,7 +84,7 @@ export function PaymentsWorkspace() {
     <div className="flex flex-col">
       <StatusViewCards value={query.view} onChange={(view) => updateFilters({ view })} />
 
-      <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2.5">
+      <div className="mt-4 mb-3 flex flex-wrap items-center gap-x-3 gap-y-2.5">
         <FilterBar query={query} onChange={(patch) => updateFilters(patch)} />
         {filtered ? (
           <button
@@ -94,17 +96,11 @@ export function PaymentsWorkspace() {
           </button>
         ) : null}
         <div className="flex w-full flex-wrap items-center gap-2 sm:ml-auto sm:w-auto">
-          <TableSearch
-            value={query.search}
-            onSearch={(search) => updateFilters({ search }, 'replace')}
-          />
           <SavedFiltersMenu query={query} onApply={(saved) => setQuery(saved)} />
           <ExportMenu viewRows={result.rows} selectedRows={selectedRows} columns={shownColumns} />
           <EditColumns columns={columns} onChange={saveColumns} onReset={resetColumns} />
         </div>
       </div>
-
-      <div className="mt-3" />
 
       {result.rows.length === 0 ? (
         <EmptyState filtered={filtered} onClearFilters={() => setQuery(clearFilters(query))} />
@@ -123,7 +119,7 @@ export function PaymentsWorkspace() {
               onToggleRow={toggleRow}
               onTogglePage={togglePage}
               onColumnsChange={saveColumns}
-              onOpenPayment={(id) => router.push(`/transactions/payments/${id}`)}
+              onOpenPayment={(id) => router.push(paymentHref(id))}
             />
           </div>
           <div className="md:hidden">

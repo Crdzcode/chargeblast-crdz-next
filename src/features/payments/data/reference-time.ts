@@ -3,11 +3,11 @@ import 'server-only';
 import { connection } from 'next/server';
 
 /**
- * The reference instant for the mock dataset, read once per request.
+ * The "now" for the mock data, read once per request.
  *
- * `connection()` keeps it out of prerendering, so the deployed app never
- * serves a dataset frozen at build time. `PAYMENTS_REFERENCE_TIME` (an ISO
- * instant) pins the clock for reproducible screenshots and E2E runs.
+ * `connection()` keeps this out of prerendering, so a deployment never serves
+ * data frozen at build time. Set PAYMENTS_REFERENCE_TIME to an ISO date to pin
+ * it for screenshots and E2E runs.
  */
 export async function getReferenceTime(): Promise<number> {
   await connection();

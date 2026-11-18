@@ -4,7 +4,7 @@ import { cn } from '@/lib/cn';
 
 import { STATUS_VIEWS, STATUS_VIEW_LABELS, type StatusView } from '../model/query';
 
-/** The six wide quick-view cards of the reference (All … Uncaptured). */
+/** The status cards above the filters: All, Succeeded, Refunded, Disputed, Failed, Uncaptured. */
 export function StatusViewCards({
   value,
   onChange,

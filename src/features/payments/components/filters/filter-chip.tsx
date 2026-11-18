@@ -29,7 +29,7 @@ export function FilterChip({ label, summary, onClear, children, panelTitle }: Fi
     <Popover open={open} onOpenChange={setOpen}>
       <span
         className={cn(
-          'inline-flex h-[26px] shrink-0 items-center rounded-full border text-[13px] leading-[18px] font-semibold text-fg-secondary transition-colors duration-100',
+          'inline-flex h-6 shrink-0 items-center rounded-full border text-[12px] leading-4 font-semibold text-fg-secondary transition-colors duration-100',
           active
             ? 'border-line-strong bg-canvas'
             : 'border-dashed border-line-dashed hover:bg-surface',
@@ -47,8 +47,8 @@ export function FilterChip({ label, summary, onClear, children, panelTitle }: Fi
         ) : null}
         <PopoverTrigger
           className={cn(
-            'inline-flex h-full items-center gap-1.5 rounded-full pr-2.5 outline-offset-0',
-            active ? 'pl-1' : 'pl-2',
+            'inline-flex h-full items-center gap-[5px] rounded-full pr-2 outline-offset-0',
+            active ? 'pl-1' : 'pl-[5px]',
           )}
         >
           {active ? null : <CirclePlus className="size-3.5 text-fg-muted" aria-hidden />}
@@ -72,7 +72,7 @@ export function FilterChip({ label, summary, onClear, children, panelTitle }: Fi
   );
 }
 
-/** Footer with the full-width primary Apply button used by every filter panel. */
+/** The Apply button at the bottom of every filter panel. */
 export function FilterApplyFooter({ disabled = false }: { readonly disabled?: boolean }) {
   return (
     <div className="border-t border-line p-3">

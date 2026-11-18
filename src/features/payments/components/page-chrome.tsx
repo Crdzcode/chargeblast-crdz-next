@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Unavailable } from '@/components/ui/unavailable';
 import { cn } from '@/lib/cn';
 
-/** "Transactions" title with the reference's primary and secondary actions. */
+/** Page title with the Create payment and Analyze buttons. */
 export function PaymentsPageHeader() {
   return (
     <div className="flex flex-wrap items-center justify-between gap-3">
@@ -39,7 +39,7 @@ const TABS = [
   'All activity',
 ] as const;
 
-/** Transactions sub-navigation; only Payments exists in this demo. */
+/** Transactions tabs. Only Payments exists in this demo. */
 export function TransactionsTabs() {
   return (
     <nav aria-label="Transactions" className="border-b border-line-strong">
@@ -74,7 +74,7 @@ export function TransactionsTabs() {
   );
 }
 
-/** Dismissible "New" announcement from the reference (session only). */
+/** The "New" banner. Dismissing it lasts until the tab is closed. */
 export function AnnouncementBanner() {
   const [dismissed, setDismissed] = useState(false);
 
@@ -85,10 +85,10 @@ export function AnnouncementBanner() {
   return (
     <aside
       aria-label="Announcement"
-      className="flex min-h-9 flex-wrap items-center gap-x-3 gap-y-1 rounded-card bg-surface py-1.5 pr-1.5 pl-2.5"
+      className="flex min-h-9 flex-wrap items-center gap-x-4 gap-y-1 rounded-card bg-surface py-1 pr-1.5 pl-2"
     >
       <span className="inline-flex items-center gap-1.5 text-[13px] font-semibold">
-        <Sparkles className="size-3.5" aria-hidden />
+        <Sparkles className="size-3" aria-hidden />
         New
       </span>
       <p className="min-w-0 flex-1 text-[14px] text-fg">

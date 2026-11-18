@@ -10,7 +10,7 @@ import {
   type StoredColumnPreference,
 } from '../model/columns';
 
-export const COLUMN_PREFERENCES_KEY = 'payments-column-preferences-v1';
+export const COLUMN_PREFERENCES_KEY = 'payments-table-columns-v1';
 
 export function parseColumnPreferences(raw: string | null): readonly ColumnConfig[] {
   if (raw === null) {
@@ -38,8 +38,8 @@ export function parseColumnPreferences(raw: string | null): readonly ColumnConfi
 }
 
 /**
- * Column visibility, order and width persisted per browser. These are view
- * preferences: never part of the URL nor of saved filters.
+ * Column visibility, order and width, saved per browser. They aren't part of
+ * the URL or of saved filters.
  */
 export function useColumnPreferences() {
   const raw = useStoredString(COLUMN_PREFERENCES_KEY);
