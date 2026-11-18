@@ -7,11 +7,11 @@ import './globals.css';
 
 export const metadata: Metadata = {
   title: {
-    default: 'Payments',
-    template: '%s · cramly.ai',
+    default: 'Stripe Payments · Chargeblast challenge',
+    template: '%s · Chargeblast challenge',
   },
   description:
-    'Stripe Dashboard Payments screen rebuilt with Next.js for the Chargeblast front-end project.',
+    'The Payments screen of the Stripe Dashboard, rebuilt with Next.js for the Chargeblast front-end challenge.',
 };
 
 export const viewport: Viewport = {
