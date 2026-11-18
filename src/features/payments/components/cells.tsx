@@ -60,14 +60,24 @@ export function AmountCell({ amountMinor, currency }: { amountMinor: number; cur
   );
 }
 
-export function PaymentMethodCell({ method }: { method: PaymentMethod }) {
+/**
+ * In the table the brand tiles sit right-aligned in a fixed slot, so the last
+ * 4 digits line up across rows. `compact` drops the slot for the mobile list.
+ */
+export function PaymentMethodCell({
+  method,
+  compact = false,
+}: {
+  method: PaymentMethod;
+  compact?: boolean;
+}) {
   return (
     <span
       className="flex w-fit items-center gap-2"
       aria-label={describePaymentMethod(method)}
       role="img"
     >
-      <span className="flex w-11 shrink-0 justify-end gap-1" aria-hidden>
+      <span className={cn('flex shrink-0 gap-1', !compact && 'w-11 justify-end')} aria-hidden>
         <PaymentMethodIcons method={method} />
       </span>
       <span className="flex items-center gap-1.5 text-fg tabular" aria-hidden>

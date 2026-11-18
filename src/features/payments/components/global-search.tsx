@@ -176,7 +176,7 @@ export function GlobalSearch() {
             }}
             onFocus={() => setOpen(true)}
             onKeyDown={onKeyDown}
-            className="h-[34px] w-full rounded-control bg-surface pr-8 pl-9 text-[15px] text-fg placeholder:text-fg-secondary focus-visible:bg-canvas focus-visible:shadow-[0_0_0_1px_var(--color-line-strong)]"
+            className="h-[34px] w-full rounded-control bg-surface pr-8 pl-9 text-[16px] text-fg placeholder:text-fg-secondary focus-visible:bg-canvas focus-visible:shadow-[0_0_0_1px_var(--color-line-strong)] sm:text-[15px]"
           />
           {term !== '' ? (
             <button

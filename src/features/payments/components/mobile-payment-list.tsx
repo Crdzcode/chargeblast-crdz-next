@@ -26,7 +26,10 @@ export function MobilePaymentList({
   return (
     <ul className="border-t border-line-strong" aria-label="Payments">
       {rows.map((row) => (
-        <li key={row.id} className="flex gap-3 border-b border-line py-3">
+        <li
+          key={row.id}
+          className="flex gap-3 border-b border-line py-3 transition-colors has-[a:active]:bg-surface"
+        >
           <Checkbox
             className="mt-0.5"
             aria-label={`Select payment ${row.id}`}
@@ -41,7 +44,7 @@ export function MobilePaymentList({
             </span>
             <span className="truncate text-fg">{row.customer.email}</span>
             <span className="flex items-center justify-between gap-2 text-[13px] text-fg-secondary">
-              <PaymentMethodCell method={row.paymentMethod} />
+              <PaymentMethodCell method={row.paymentMethod} compact />
               <time dateTime={row.createdAt}>{formatShortDateTime(row.createdAt)}</time>
             </span>
             <span className="text-[12px] text-fg-muted tabular">{shortenPaymentId(row.id)}</span>

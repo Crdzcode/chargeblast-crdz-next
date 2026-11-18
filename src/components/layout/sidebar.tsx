@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import type { ComponentType, SVGProps } from 'react';
+import type { ComponentType, ReactNode, SVGProps } from 'react';
 
 import { BalancesIcon, PushPinIcon } from '@/components/icons/dashboard-icons';
 import { Unavailable } from '@/components/ui/unavailable';
@@ -56,9 +56,18 @@ const PRODUCTS: readonly NavItem[] = [
   { label: 'More', icon: Ellipsis, expandable: true },
 ];
 
-function NavEntry({ item, active }: { item: NavItem; active: boolean }) {
+function NavEntry({
+  item,
+  active,
+  onNavigate,
+}: {
+  item: NavItem;
+  active: boolean;
+  onNavigate?: () => void;
+}) {
+  // Taller rows in the mobile drawer give fingers a bigger target.
   const className = cn(
-    'flex h-7 w-full items-center gap-2.5 rounded-control px-2 text-left text-[14px] font-medium transition-colors duration-100',
+    'flex h-7 w-full items-center gap-2.5 rounded-control px-2 text-left text-[14px] font-medium transition-colors duration-100 max-lg:h-9',
     active ? 'text-primary-text' : 'text-fg hover:bg-nav-active',
   );
   const content = (
@@ -74,7 +83,12 @@ function NavEntry({ item, active }: { item: NavItem; active: boolean }) {
 
   if (item.href) {
     return (
-      <Link href={item.href} aria-current={active ? 'page' : undefined} className={className}>
+      <Link
+        href={item.href}
+        aria-current={active ? 'page' : undefined}
+        onClick={onNavigate}
+        className={className}
+      >
         {content}
       </Link>
     );
@@ -93,10 +107,12 @@ function NavSection({
   title,
   items,
   pathname,
+  onNavigate,
 }: {
   title?: string;
   items: readonly NavItem[];
   pathname: string;
+  onNavigate?: () => void;
 }) {
   return (
     <div className="flex flex-col gap-0.5">
@@ -109,6 +125,7 @@ function NavSection({
             <NavEntry
               item={item}
               active={item.href !== undefined && pathname.startsWith(item.href)}
+              onNavigate={onNavigate}
             />
           </li>
         ))}
@@ -117,16 +134,33 @@ function NavSection({
   );
 }
 
-export function SidebarContent() {
+interface SidebarContentProps {
+  /** Rendered beside the account switcher, e.g. the drawer's close button. */
+  readonly headerAction?: ReactNode;
+  /** Called when a link is followed, so the mobile drawer can close. */
+  readonly onNavigate?: () => void;
+}
+
+export function SidebarContent({ headerAction, onNavigate }: SidebarContentProps) {
   const pathname = usePathname();
 
   return (
     <div className="flex h-full flex-col px-3 pt-2 pb-3">
-      <AccountMenu />
+      <div className="flex items-center gap-1">
+        <div className="min-w-0 flex-1">
+          <AccountMenu />
+        </div>
+        {headerAction}
+      </div>
       <nav aria-label="Main" className="mt-8 flex flex-1 flex-col gap-[31px] overflow-y-auto">
-        <NavSection items={PRIMARY} pathname={pathname} />
-        <NavSection title="Shortcuts" items={SHORTCUTS} pathname={pathname} />
-        <NavSection title="Products" items={PRODUCTS} pathname={pathname} />
+        <NavSection items={PRIMARY} pathname={pathname} onNavigate={onNavigate} />
+        <NavSection
+          title="Shortcuts"
+          items={SHORTCUTS}
+          pathname={pathname}
+          onNavigate={onNavigate}
+        />
+        <NavSection title="Products" items={PRODUCTS} pathname={pathname} onNavigate={onNavigate} />
       </nav>
       <ul className="pt-3">
         <li>

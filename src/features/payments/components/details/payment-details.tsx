@@ -45,7 +45,7 @@ function Section({ title, children }: { readonly title: string; readonly childre
 
 function DefinitionList({ fields }: { readonly fields: readonly Field[] }) {
   return (
-    <dl className="grid grid-cols-[minmax(120px,180px)_1fr] gap-x-6 gap-y-2.5 text-[14px]">
+    <dl className="grid grid-cols-[112px_1fr] gap-x-4 gap-y-2.5 text-[14px] sm:grid-cols-[minmax(120px,180px)_1fr] sm:gap-x-6">
       {fields.map(({ label, value }) => (
         <div key={label} className="contents">
           <dt className="text-fg-secondary">{label}</dt>

@@ -2,7 +2,7 @@
 
 import { Bell, CircleHelp, Menu, Plus, Settings, X } from 'lucide-react';
 import { Dialog } from 'radix-ui';
-import { Suspense } from 'react';
+import { Suspense, useState } from 'react';
 
 import { Unavailable } from '@/components/ui/unavailable';
 import { GlobalSearch } from '@/features/payments/components/global-search';
@@ -29,27 +29,34 @@ function SearchFallback() {
   return <div className="h-[34px] w-full max-w-[552px] rounded-control bg-surface" aria-hidden />;
 }
 
+/** Below the lg breakpoint the sidebar becomes a drawer that slides in from the left. */
 function MobileNavigation() {
+  const [open, setOpen] = useState(false);
+
   return (
-    <Dialog.Root>
+    <Dialog.Root open={open} onOpenChange={setOpen}>
       <Dialog.Trigger
         aria-label="Open navigation"
-        className="inline-flex size-8 shrink-0 items-center justify-center rounded-control text-fg hover:bg-surface-hover lg:hidden"
+        className="inline-flex size-9 shrink-0 items-center justify-center rounded-control text-fg transition-colors hover:bg-surface-hover active:bg-surface-pressed lg:hidden"
       >
         <Menu className="size-5" aria-hidden />
       </Dialog.Trigger>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-40 bg-black/20" />
-        <Dialog.Content className="fixed inset-y-0 left-0 z-50 w-[260px] bg-canvas shadow-popover outline-none">
+        <Dialog.Overlay className="fixed inset-0 z-40 bg-black/25 data-[state=closed]:animate-fade-out data-[state=open]:animate-fade-in" />
+        <Dialog.Content className="fixed inset-y-0 left-0 z-50 w-[min(280px,85vw)] bg-canvas shadow-popover outline-none data-[state=closed]:animate-drawer-out data-[state=open]:animate-drawer-in">
           <Dialog.Title className="sr-only">Navigation</Dialog.Title>
           <Dialog.Description className="sr-only">Dashboard sections</Dialog.Description>
-          <Dialog.Close
-            aria-label="Close navigation"
-            className="absolute top-3.5 right-2 inline-flex size-7 items-center justify-center rounded-control hover:bg-surface-hover"
-          >
-            <X className="size-4" aria-hidden />
-          </Dialog.Close>
-          <SidebarContent />
+          <SidebarContent
+            onNavigate={() => setOpen(false)}
+            headerAction={
+              <Dialog.Close
+                aria-label="Close navigation"
+                className="inline-flex size-9 shrink-0 items-center justify-center rounded-control text-fg-secondary transition-colors hover:bg-surface-hover hover:text-fg active:bg-surface-pressed"
+              >
+                <X className="size-4" aria-hidden />
+              </Dialog.Close>
+            }
+          />
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>

@@ -387,3 +387,22 @@ test.describe('Mobile @mobile', () => {
     expect(errors).toEqual([]);
   });
 });
+
+test.describe('Mobile navigation @mobile', () => {
+  test('slides the drawer in without covering the account menu and closes on navigation', async ({
+    page,
+  }) => {
+    await page.goto(LIST);
+    await page.getByRole('button', { name: 'Open navigation' }).click();
+
+    const drawer = page.getByRole('dialog');
+    await expect(drawer).toHaveCSS('animation-name', 'drawer-in');
+
+    const account = await drawer.getByRole('button', { name: /Open account menu/ }).boundingBox();
+    const close = await drawer.getByRole('button', { name: 'Close navigation' }).boundingBox();
+    expect(account && close && account.x + account.width <= close.x).toBe(true);
+
+    await drawer.getByRole('link', { name: 'Transactions' }).click();
+    await expect(drawer).toBeHidden();
+  });
+});
